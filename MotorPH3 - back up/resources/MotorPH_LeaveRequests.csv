@@ -1,0 +1,4 @@
+Employee #,Last Name,First Name,Start Date,End Date,Reason,Status
+10034,Santos,Beatriz,Emergency Leave,03/06/2026,03/13/2026,"try",Pending
+10034,Santos,Beatriz,Sick Leave,03/07/2026,03/08/2026,"need to check up po sir ",Pending
+10005,Hernandez,Eduard,Emergency Leave,03/12/2026,03/19/2026,"No reason provided",Pending
