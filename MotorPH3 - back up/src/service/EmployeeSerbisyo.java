@@ -65,4 +65,23 @@ public class EmployeeSerbisyo {
         
         return grossIncome - (totalDeductions + tax);
     }
+
+public Role determineRole(String positionText) {
+        if (positionText == null) return Role.REGULAR_STAFF;
+        
+        String pos = positionText.toLowerCase();
+        
+        // BUSINESS RULE: If position contains "IT", they ARE IT_STAFF
+        if (pos.contains("it") || pos.contains("systems")) {
+            return Role.IT_STAFF;
+        }
+        
+        if (pos.contains("hr") || pos.contains("manager")) {
+            return Role.HR_STAFF;
+        }
+        
+        return Role.REGULAR_STAFF;
+    }
+
+    
 }

@@ -66,4 +66,29 @@ public static void loginUser(Employee emp) {
     loggedInEmployee = emp;
     userRole = emp.getRole();
 }
+public Role determineRole(String positionText) {
+    if (positionText == null) return Role.REGULAR_STAFF;
+    
+    String pos = positionText.toLowerCase();
+    
+    // BUSINESS RULES: Logic for identifying staff types
+    if (pos.contains("it") || pos.contains("systems") || pos.contains("operations")) {
+        return Role.IT_STAFF;
+    }
+    
+    if (pos.contains("hr") || pos.contains("human resources") || pos.contains("manager")) {
+        return Role.HR_STAFF;
+    }
+
+    if (pos.contains("admin") || pos.contains("chief") || pos.contains("executive")) {
+        return Role.ADMIN;
+    }
+    
+    if (pos.contains("accounting") || pos.contains("finance")) {
+        return Role.ACCOUNTING;
+    }
+    
+    // Default fallback
+    return Role.REGULAR_STAFF; }
+
 }

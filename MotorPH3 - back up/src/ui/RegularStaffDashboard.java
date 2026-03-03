@@ -20,6 +20,7 @@ public class RegularStaffDashboard extends JFrame {
     private final JPanel cardPanel;
     private final CardLayout cardLayout;
     private final DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("MM/dd/yyyy");
+    
 
     // UI Fields
     private JTextField txtEmpNo, txtLastName, txtFirstName, txtStatus, txtPosition, txtSupervisor;
@@ -35,19 +36,123 @@ public class RegularStaffDashboard extends JFrame {
         setSize(1300, 850); 
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
+        setLayout(new BorderLayout());
 
+        // 1. Sidebar (West)
         add(createSidebar(), BorderLayout.WEST);
 
+        // 2. Setup CardLayout and Panels
         cardLayout = new CardLayout();
         cardPanel = new JPanel(cardLayout);
-        
         cardPanel.add(createHomePanel(), "HOME");
         cardPanel.add(createTimeTrackingPanel(), "TIME");
         cardPanel.add(createLeaveApplicationPanel(), "LEAVE");
 
-        add(cardPanel, BorderLayout.CENTER);
+        // 3. Create Main Content Wrapper (Header + Cards)
+        JPanel mainContent = new JPanel(new BorderLayout());
+        mainContent.add(createTopHeader(), BorderLayout.NORTH); 
+        mainContent.add(cardPanel, BorderLayout.CENTER);
+
+        // 4. Add Wrapper to Frame
+        add(mainContent, BorderLayout.CENTER);
+
         loadEmployeeDetails();
     }
+
+    private JPanel createTopHeader() {
+    JPanel header = new JPanel(new BorderLayout());
+    header.setBackground(Color.WHITE);
+    
+    // Bottom border to create the "line" seen in the screenshot
+    header.setBorder(BorderFactory.createCompoundBorder(
+        BorderFactory.createMatteBorder(0, 0, 1, 0, new Color(225, 225, 225)),
+        BorderFactory.createEmptyBorder(15, 25, 15, 25)
+    ));
+
+    // LEFT: Dashboard Title & Breadcrumb
+    JPanel titlePanel = new JPanel(new GridLayout(2, 1, 0, 0));
+    titlePanel.setOpaque(false);
+    JLabel lblTitle = new JLabel("Dashboard");
+    lblTitle.setFont(new Font("SansSerif", Font.BOLD, 22));
+    JLabel lblBreadcrumb = new JLabel("Link / Page");
+    lblBreadcrumb.setForeground(new Color(140, 40, 40)); // Dark red text
+    titlePanel.add(lblTitle);
+    titlePanel.add(lblBreadcrumb);
+
+    // RIGHT: Search and User Actions
+    JPanel rightSide = new JPanel(new FlowLayout(FlowLayout.RIGHT, 15, 0));
+    rightSide.setOpaque(false);
+
+    // Search Box (Rounded)
+    JPanel searchBar = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 8));
+    searchBar.setBackground(new Color(250, 250, 250));
+    searchBar.setBorder(BorderFactory.createLineBorder(new Color(235, 235, 235), 1, true));
+    searchBar.add(new JLabel("🔍"));
+    JTextField searchInput = new JTextField("Search anything", 18);
+    searchInput.setBorder(null);
+    searchInput.setOpaque(false);
+    searchBar.add(searchInput);
+
+    // PNG Icon Buttons (Settings & Notifications)
+    JButton btnSettings = createImgButton("src/images/settings_icon.png");
+    JButton btnNotify = createImgButton("src/images/bell_icon.png");
+
+    // Profile Section (Avatar PNG + Text)
+    JPanel profile = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
+    profile.setOpaque(false);
+    
+    // Load User Avatar
+    ImageIcon avatarIcon = new ImageIcon(new ImageIcon("src/images/miguel_profile.png")
+            .getImage().getScaledInstance(40, 40, Image.SCALE_SMOOTH));
+    JLabel avatarLabel = new JLabel(avatarIcon);
+
+    JPanel nameStack = new JPanel(new GridLayout(2, 1));
+    nameStack.setOpaque(false);
+    JLabel name = new JLabel(currentUser.getFirstName() + " " + currentUser.getLastName());
+    name.setFont(new Font("SansSerif", Font.BOLD, 14));
+    JLabel role = new JLabel(currentUser.getPosition());
+    role.setFont(new Font("SansSerif", Font.PLAIN, 11));
+    role.setForeground(Color.GRAY);
+    nameStack.add(name);
+    nameStack.add(role);
+
+    profile.add(avatarLabel);
+    profile.add(nameStack);
+
+    rightSide.add(searchBar);
+    rightSide.add(btnSettings);
+    rightSide.add(btnNotify);
+    rightSide.add(profile);
+
+    header.add(titlePanel, BorderLayout.WEST);
+    header.add(rightSide, BorderLayout.EAST);
+    
+    return header;
+}
+
+    private JButton createImgButton(String imgPath) {
+    JButton btn = new JButton();
+    try {
+        // Load and scale the PNG to fit inside the salmon square
+        ImageIcon icon = new ImageIcon(new ImageIcon(imgPath)
+                .getImage().getScaledInstance(22, 22, Image.SCALE_SMOOTH));
+        btn.setIcon(icon);
+    } catch (Exception e) {
+        btn.setText("?"); // Fallback if image fails to load
+    }
+
+    btn.setPreferredSize(new Dimension(42, 42));
+    btn.setBackground(new Color(255, 173, 173)); // The salmon color from your screenshot
+    btn.setFocusPainted(false);
+    btn.setBorderPainted(false);
+    btn.setOpaque(true);
+    
+    // Optional: Rounded corners for the button background
+    btn.setUI(new javax.swing.plaf.basic.BasicButtonUI()); 
+    btn.setBorder(BorderFactory.createEmptyBorder());
+    
+    return btn;
+}
 
     private JPanel createSidebar() {
         JPanel nav = new JPanel();
@@ -78,6 +183,8 @@ public class RegularStaffDashboard extends JFrame {
         nav.add(Box.createVerticalStrut(20));
         return nav;
     }
+
+   
 
     private JPanel createHomePanel() {
         JPanel mainPanel = new JPanel();

@@ -97,8 +97,13 @@ public class CSVHandler implements EmployeeDAO {
         try {
             int id = Integer.parseInt(clean(data[0])); 
             double basicSalary = parseCurrency(data[13]); 
+
+            String roleStr = (data.length >= 20) ? clean(data[19]) : "REGULAR_STAFF";
+            // Use your upgrade method immediately during initial load
+        Employee base = new RegularStaff(id, clean(data[1]), clean(data[2]), birthday, basicSalary);
+        Employee emp = upgradeEmployeeRole(base, roleStr);
             
-            Employee emp = new RegularStaff(id, clean(data[1]), clean(data[2]), birthday, basicSalary);
+            
             
             emp.setAddress(clean(data[4]));
             emp.setPhone(clean(data[5]));
@@ -284,24 +289,21 @@ public void updateEmployeeStatus(int empNo, String newStatus) {
     }
 
     // Helper method to save the separate Login CSV
-    private void saveLoginsToCSV() {
-        try (PrintWriter out = new PrintWriter(new BufferedWriter(new FileWriter(LOGIN_DATA_CSV)))) {
-            out.println("Employee #,Username,Last Name,First Name,Password,Role");
-            for (Employee e : employeeCache.values()) {
-                // Ensure password and role are not null
-                String pass = (e.getPassword() != null) ? e.getPassword() : "password123";
-                String role = (e.getRole() != null) ? e.getRole().toString() : "REGULAR_STAFF";
-                
-                out.printf("%d,%s,%s,%s,%s,%s%n", 
-                    e.getEmpNo(), 
-                    e.getFirstName().toLowerCase() + e.getEmpNo(), // Generated Username logic
-                    e.getLastName(), 
-                    e.getFirstName(), 
-                    pass, 
-                    role);
-            }
-        } catch (IOException e) { System.err.println("Login Save Error: " + e.getMessage()); }
-    }
+private void saveLoginsToCSV() {
+    try (PrintWriter out = new PrintWriter(new BufferedWriter(new FileWriter(LOGIN_DATA_CSV)))) {
+        out.println("Employee #,Username,Last Name,First Name,Password,Role");
+        for (Employee e : employeeCache.values()) {
+            String pass = (e.getPassword() != null) ? e.getPassword() : "password123";
+            // Get the actual role from the upgraded object
+            String roleName = (e.getRole() != null) ? e.getRole().name() : "REGULAR_STAFF";
+            
+            out.printf("%d,%s,%s,%s,%s,%s%n", 
+                e.getEmpNo(), 
+                e.getFirstName().toLowerCase() + e.getEmpNo(), 
+                e.getLastName(), e.getFirstName(), pass, roleName);
+        }
+    } catch (IOException e) { System.err.println("Login Save Error: " + e.getMessage()); }
+}
 
     @Override public Employee findById(int id) { return employeeCache.get(id); }
     @Override public Employee findByUsername(String u) { return usernameCache.get(u.trim().toLowerCase()); }
@@ -339,36 +341,23 @@ public void updateEmployeeStatus(int empNo, String newStatus) {
         return list;
     }
 
-   private boolean saveAllToCSV(List<Employee> employees) {
+private boolean saveAllToCSV(List<Employee> employees) {
     employees.sort(Comparator.comparingInt(Employee::getEmpNo));
     try (PrintWriter writer = new PrintWriter(new BufferedWriter(new FileWriter(EMPLOYEE_DATA_CSV)))) {
-        // 1. Write the Header
-        writer.println("Employee #,Last Name,First Name,Birthday,Address,Phone #,SSS #,Philhealth #,TIN #,Pag-ibig #,Status,Position,Immediate Supervisor,Basic Salary,Rice Subsidy,Phone Allowance,Clothing Allowance,Gross Semi-monthly Rate,Hourly Rate");
+        // 1. Added Role to header
+        writer.println("Employee #,Last Name,First Name,Birthday,Address,Phone #,SSS #,Philhealth #,TIN #,Pag-ibig #,Status,Position,Immediate Supervisor,Basic Salary,Rice Subsidy,Phone Allowance,Clothing Allowance,Gross Semi-monthly Rate,Hourly Rate,Role");
         
         for (Employee e : employees) {
             String bday = (e.getBirthday() != null) ? e.getBirthday().format(dateFormatter) : "";
-            
-            // 2. THE FIX: Wrap Address [index 4] and Supervisor [index 12] in double quotes
-            writer.printf("%d,%s,%s,%s,\"%s\",%s,%s,%s,%s,%s,%s,%s,\"%s\",%.2f,%.2f,%.2f,%.2f,%.2f,%.2f%n",
-                e.getEmpNo(), 
-                e.getLastName(), 
-                e.getFirstName(), 
-                bday, 
-                e.getAddress().replace("\"", ""),       // Address (escaped)
-                e.getPhone(), 
-                e.getSss(), 
-                e.getPhilhealth(), 
-                e.getTin(), 
-                e.getPagibig(), 
-                e.getStatus(), 
-                e.getPosition(), 
-                e.getSupervisor().replace("\"", ""),    // Supervisor (escaped)
-                e.getBasicSalary(), 
-                e.getRiceSubsidy(), 
-                e.getPhoneAllowance(), 
-                e.getClothingAllowance(), 
-                e.getGrossRate(), 
-                e.getHourlyRate());
+            // 2. Added %s at the end for the Role
+            writer.printf("%d,%s,%s,%s,\"%s\",%s,%s,%s,%s,%s,%s,%s,\"%s\",%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%s%n",
+                e.getEmpNo(), e.getLastName(), e.getFirstName(), bday, 
+                e.getAddress().replace("\"", ""), e.getPhone(), e.getSss(), e.getPhilhealth(), 
+                e.getTin(), e.getPagibig(), e.getStatus(), e.getPosition(), 
+                e.getSupervisor().replace("\"", ""), e.getBasicSalary(), 
+                e.getRiceSubsidy(), e.getPhoneAllowance(), e.getClothingAllowance(), 
+                e.getGrossRate(), e.getHourlyRate(),
+                e.getRole()); // <--- New Role field
         }
         return true;
     } catch (IOException e) { return false; }
