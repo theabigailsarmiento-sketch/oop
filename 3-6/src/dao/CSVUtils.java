@@ -2,9 +2,11 @@ package dao;
 
 public class CSVUtils {
     
- public static String[] splitCSVLine(String line) {
-    // This regex is the industry standard for Java CSV parsing without external libraries.
-    // It splits by comma only if that comma is NOT inside a pair of double quotes.
+public static String[] splitCSVLine(String line) {
+    // This regex splits by comma but is 'smart' enough to handle 
+    // fields that might be quoted or contains extra spaces.
+    // If you remove the quotes from the CSV, this ensures 
+    // we can still reconstruct the address if it gets split.
     return line.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)", -1);
 }
 

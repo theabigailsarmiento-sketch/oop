@@ -33,7 +33,7 @@ private void loadAllIntoCache() {
     employeeCache.clear();
     usernameCache.clear();
 
-   try (BufferedReader br = new BufferedReader(new FileReader(EMPLOYEE_DATA_CSV))) {
+    try (BufferedReader br = new BufferedReader(new FileReader(EMPLOYEE_DATA_CSV))) {
         br.readLine(); 
         String line;
         while ((line = br.readLine()) != null) {
@@ -99,13 +99,14 @@ private Employee mapToEmployee(String[] data, LocalDate birthday) {
         emp.setStatus(CSVUtils.clean(data[10]));
         emp.setPosition(CSVUtils.clean(data[11]));    // Column 11: Position
         emp.setSupervisor(CSVUtils.clean(data[12]));  // Column 12: Supervisor
+        // Explicitly set it again to be safe
+        emp.setBasicSalary(basicSalary);
         
         // Financial Allowances
         emp.setRiceSubsidy(CSVUtils.parseCurrency(data[14]));      // Column 14
         emp.setPhoneAllowance(CSVUtils.parseCurrency(data[15]));   // Column 15
         emp.setClothingAllowance(CSVUtils.parseCurrency(data[16]));// Column 16
-        emp.setBasicSalary(basicSalary); // Fixes the 0.0 issue
-        
+       
         // Rates
         emp.setGrossRate(CSVUtils.parseCurrency(data[17]));        // Column 17
         emp.setHourlyRate(CSVUtils.parseCurrency(data[18]));       // Column 18
