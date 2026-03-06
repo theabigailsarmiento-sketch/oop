@@ -20,7 +20,7 @@ import service.LeaveService;
 public class AdminDashboard extends JFrame {
 
     private final EmployeeDAO employeeDao;
-    private final AttendanceDAO attendanceDao; // Field added to resolve "cannot be resolved" error
+    private final AttendanceDAO attendanceDao; 
     private final Employee currentUser;
     private final LeaveService leaveService;
     private final HRSerbisyo hrService;
@@ -48,7 +48,7 @@ public class AdminDashboard extends JFrame {
         this.attendanceDao = attDao;
         this.currentUser = user;
         
-        // Initializing services with correct parameters
+        
         this.leaveService = new LeaveService(dao, attDao);                                                                               
         this.hrService = new HRSerbisyo(dao);   
         this.employeeManagementService = new EmployeeManagementService(dao);
@@ -97,8 +97,7 @@ public class AdminDashboard extends JFrame {
         txtClothing.setText(String.format("%.2f", emp.getClothingAllowance()));
         txtGross.setText(String.format("%.2f", emp.getGrossRate()));
         txtHourly.setText(String.format("%.2f", emp.getHourlyRate()));
-        txtGross.setText(String.format("%.2f", emp.getGrossRate())); // This works now because DAO copies the data
-txtHourly.setText(String.format("%.2f", emp.getHourlyRate()));
+        txtGross.setText(String.format("%.2f", emp.getGrossRate())); 
 
         displayEmployeePhoto(lblProfilePic);
     }
@@ -108,17 +107,15 @@ txtHourly.setText(String.format("%.2f", emp.getHourlyRate()));
     mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
     mainPanel.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
 
-    // Modified infoPanel to accommodate the photo
+  
     JPanel infoPanel = new JPanel(new BorderLayout(15, 0));
     infoPanel.setBorder(BorderFactory.createTitledBorder("Employee Information"));
 
-    // --- PHOTO SECTION ---
     lblProfilePic = new JLabel("No Image");
     lblProfilePic.setPreferredSize(new Dimension(150, 150));
     lblProfilePic.setBorder(BorderFactory.createLineBorder(Color.GRAY));
     lblProfilePic.setHorizontalAlignment(JLabel.CENTER);
     
-    // Wrap photo in a panel so it doesn't stretch awkwardly
     JPanel photoWrapper = new JPanel(new FlowLayout(FlowLayout.CENTER));
     photoWrapper.add(lblProfilePic);
     infoPanel.add(photoWrapper, BorderLayout.WEST);
@@ -134,7 +131,6 @@ txtHourly.setText(String.format("%.2f", emp.getHourlyRate()));
     
     infoPanel.add(fieldsPanel, BorderLayout.CENTER);
 
-    // Remaining panels (No changes here)
     JPanel personalPanel = createGridPanel("Personal Information", 7, 2);
     txtBirthday = addField(personalPanel, "Birthday:", false);
     txtAddress = addField(personalPanel, "Address:", true);
@@ -350,7 +346,7 @@ txtHourly.setText(String.format("%.2f", emp.getHourlyRate()));
         int confirm = JOptionPane.showConfirmDialog(this, "Are you sure you want to Check In?", "Confirm Check In", JOptionPane.YES_NO_OPTION);
         if (confirm == JOptionPane.YES_OPTION) {
             attendanceDao.recordAttendance(currentUser.getEmpNo(), "Check-in");
-            refresh.run(); // refresh will handle the grey-out automatically
+            refresh.run();
         }
     });
 
@@ -358,7 +354,7 @@ txtHourly.setText(String.format("%.2f", emp.getHourlyRate()));
         int confirm = JOptionPane.showConfirmDialog(this, "Are you sure you want to Check Out?", "Confirm Check Out", JOptionPane.YES_NO_OPTION);
         if (confirm == JOptionPane.YES_OPTION) {
             attendanceDao.recordAttendance(currentUser.getEmpNo(), "Check-out");
-            refresh.run(); // refresh will handle the grey-out automatically
+            refresh.run(); 
         }
     });
 
@@ -436,24 +432,21 @@ txtHourly.setText(String.format("%.2f", emp.getHourlyRate()));
     JTable table = new JTable(model);
     table.setRowHeight(25);
     
-    // Optional: Hide Column 0 (Leave ID) and Column 1 (Emp ID) if you want the UI 
-    // to look exactly like the old one while still holding the data logic.
-    // table.removeColumn(table.getColumnModel().getColumn(0));
-    // table.removeColumn(table.getColumnModel().getColumn(0));
 
-    // Helper to refresh data from CSV
+
+    
     Runnable refreshTable = () -> {
     Object[][] data = leaveService.getLeaveHistory(currentUser.getEmpNo());
     
-    // TRACE: Print to console to see if the new leave is in this array
+    
     System.out.println("UI Loaded " + data.length + " leave records.");
     
     model.setDataVector(data, cols);
-    // Important: Re-apply the renderer every time the data vector changes
+    
     table.getColumnModel().getColumn(8).setCellRenderer(statusRenderer);
 };
 
-    // Initial Load
+   
     refreshTable.run();
 
     btnPickStart.addActionListener(e -> txtStart.setText(new DatePicker(this).setPickedDate()));
@@ -516,8 +509,7 @@ txtHourly.setText(String.format("%.2f", emp.getHourlyRate()));
 
     btnAddNew.addActionListener(e -> masterlistLayout.show(masterlistContainer, "FORM"));
 
-    // --- START: VIEW DETAILS LOGIC ---
-   // --- START: VIEW DETAILS LOGIC ---
+   
     btnView.addActionListener(e -> {
         int row = empTable.getSelectedRow();
         if (row != -1) {
@@ -541,7 +533,7 @@ txtHourly.setText(String.format("%.2f", emp.getHourlyRate()));
             JOptionPane.showMessageDialog(this, "Please select an employee first.");
         }
     });
-    // --- END: VIEW DETAILS LOGIC ---
+  
     btnDelete.addActionListener(e -> {
         int row = empTable.getSelectedRow();
         if (row != -1) {
@@ -557,8 +549,7 @@ txtHourly.setText(String.format("%.2f", emp.getHourlyRate()));
 
     JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 15, 10));
     btnPanel.add(btnAddNew); 
-    btnPanel.add(btnView);   // Added the View button to the panel
-    btnPanel.add(btnDelete);
+    btnPanel.add(btnView);  
     
     tablePanel.add(new JScrollPane(empTable), BorderLayout.CENTER);
     tablePanel.add(btnPanel, BorderLayout.SOUTH);
@@ -570,9 +561,7 @@ txtHourly.setText(String.format("%.2f", emp.getHourlyRate()));
 }
 
 
-/**
- * Sets up a grey placeholder guide for a text field.
- */
+
 private void setupPlaceholder(JTextField field, String hint) {
     field.setText(hint);
     field.setForeground(Color.GRAY);
@@ -595,9 +584,7 @@ private void setupPlaceholder(JTextField field, String hint) {
     });
 }
 
-/**
- * Ensures we don't save the placeholder text as actual data.
- */
+
 private String getActualValue(JTextField field, String hint) {
     String val = field.getText().trim();
     return val.equals(hint) ? "" : val;
@@ -610,7 +597,7 @@ private String getActualValue(JTextField field, String hint) {
     JPanel formContainer = new JPanel();
     formContainer.setLayout(new BoxLayout(formContainer, BoxLayout.Y_AXIS));
 
-    // --- Personal Information ---
+    
     JPanel personalPanel = createFormSection("Personal Information", 0, 2);
     JTextField fName = new JTextField(); 
     JTextField lName = new JTextField();
@@ -620,10 +607,10 @@ private String getActualValue(JTextField field, String hint) {
     JTextField address = new JTextField();
     JTextField phone = new JTextField();
     
-    // APPLY MASK: Phone Field: 000-000-000
+    
     ((javax.swing.text.AbstractDocument) phone.getDocument()).setDocumentFilter(new util.MaskFormatterFilter("###-###-###"));
     
-    // ADDED: Placeholder for Phone
+    
     setupPlaceholder(phone, "000-000-000");
 
     JComboBox<String> gender = new JComboBox<>(new String[]{"Male", "Female", "Other"});
@@ -636,22 +623,22 @@ private String getActualValue(JTextField field, String hint) {
     addFormField(personalPanel, "Address:", address);
     addFormField(personalPanel, "Phone Number:", phone);
 
-    // --- Identification & Status ---
+   
     JPanel govPanel = createFormSection("Identification & Status", 0, 2);
     JTextField sss = new JTextField(); 
     JTextField phil = new JTextField();
     JTextField tin = new JTextField(); 
     JTextField pagibig = new JTextField();
 
-    // APPLY MASKS: SSS and TIN
+  
     ((javax.swing.text.AbstractDocument) sss.getDocument()).setDocumentFilter(new util.MaskFormatterFilter("##-#######-#"));
     ((javax.swing.text.AbstractDocument) tin.getDocument()).setDocumentFilter(new util.MaskFormatterFilter("###-###-###-###"));
     
-    // ADDED: 12-Digit Numeric Filters for Philhealth and Pag-ibig (Ensures CSV format)
+    
     ((javax.swing.text.AbstractDocument) phil.getDocument()).setDocumentFilter(new util.NumericLimitFilter(12));
     ((javax.swing.text.AbstractDocument) pagibig.getDocument()).setDocumentFilter(new util.NumericLimitFilter(12));
 
-    // ADDED: Placeholders for IDs (Updated with Philhealth and Pag-ibig)
+    
     setupPlaceholder(sss, "00-0000000-0");
     setupPlaceholder(phil, "000000000000"); // 12 digits numeric
     setupPlaceholder(tin, "000-000-000-000");
@@ -690,7 +677,6 @@ private String getActualValue(JTextField field, String hint) {
     
     btnSave.addActionListener(e -> {
     try {
-        // 1. Create and Fill the Model (Data representation)
         Employee newEmp = new RegularStaff(); 
         newEmp.setFirstName(fName.getText().trim());
         newEmp.setLastName(lName.getText().trim());
@@ -710,13 +696,12 @@ private String getActualValue(JTextField field, String hint) {
         newEmp.setPhoneAllowance(Double.parseDouble(pallow.getText()));
         newEmp.setClothingAllowance(Double.parseDouble(cloth.getText()));
 
-        // 2. Call the SERVICE (Business Rules & Calculations)
-        // This triggers your registerEmployee method which calculates Gross/Hourly!
+        
         boolean success = employeeManagementService.registerEmployee((IAdminOperations)currentUser, newEmp);
 
         if (success) {
             JOptionPane.showMessageDialog(this, "Employee Registered Successfully!");
-            refreshTable(); // Updates the UI Masterlist
+            refreshTable(); 
             masterlistLayout.show(masterlistContainer, "TABLE"); // Navigate back
         }
     } catch (Exception ex) {

@@ -7,17 +7,17 @@ import javax.swing.*;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.table.DefaultTableModel;
 import model.Employee;
+import service.EmployeeManagementService;
 
 public class EmployeeDashboard extends JPanel {
     private final JTable employeeTable;
     private final DefaultTableModel tableModel;
-    private final EmployeeDAO dao; // Changed from Service to DAO
-    
+    private final EmployeeManagementService service; // Change from DAO to Service
     private JTextField txtEmpNo, txtLastName, txtFirstName, txtStatus, txtPosition, txtSupervisor;
 
-    // UPDATE: Constructor now accepts the DAO passed from AdminDashboard
-    public EmployeeDashboard(EmployeeDAO dao) {
-        this.dao = dao;
+    
+    public EmployeeDashboard(EmployeeManagementService service) {
+        this.service = service; // Store the service
         setLayout(new BorderLayout());
 
         String[] columns = {"ID", "Last Name", "First Name", "Birthday", "Address", "Phone", "SSS", "Philhealth", "TIN", "Pagibig", "Status", "Position", "Supervisor"};

@@ -1,27 +1,24 @@
 package ui;
 
 import dao.AttendanceDAO;
-import dao.EmployeeDAO;
 import dao.UserLibrary;
 import java.awt.*;
 import javax.swing.*;
 import model.Employee;
-import model.Role;
-
+import service.EmployeeManagementService;
 
 public class LoginPanel extends JFrame {
 
-    private final EmployeeDAO myHandler;
+    private final EmployeeManagementService employeeService; 
     private final AttendanceDAO attendanceDao; 
     private final UserLibrary authService;
-    
     
     private JTextField empField;
     private JPasswordField passField;
     private int loginAttempts = 0;
 
-    public LoginPanel(EmployeeDAO dao, AttendanceDAO attDao, UserLibrary auth) {
-        this.myHandler = dao;
+    public LoginPanel(EmployeeManagementService service, AttendanceDAO attDao, UserLibrary auth) {
+        this.employeeService = service; 
         this.attendanceDao = attDao;
         this.authService = auth;
         initializeUI();
@@ -143,50 +140,29 @@ public class LoginPanel extends JFrame {
     }
 
    private void handleLogin() {
-    String username = empField.getText().trim();
-    String password = new String(passField.getPassword()).trim();
+        String username = empField.getText().trim();
+        String password = new String(passField.getPassword()).trim();
 
-    // Call the Service Layer to protect the DAO
-    if (authService.authenticate(username, password)) {
-        // Retrieve processed data from the Service
-        Role role = UserLibrary.getUserRole();
-        Employee user = UserLibrary.getLoggedInEmployee();
-        
-        // Pass control to the navigation handler
-        navigateToDashboard(role, user);
-    } else {
-        JOptionPane.showMessageDialog(this, "Invalid credentials. Please try again.");
+        if (authService.authenticate(username, password)) {
+            // Retrieve actual employee model and role
+            Employee user = authService.getLoggedInEmployee();
+            
+            if (user != null) {
+                navigateToDashboard(user);
+            } else {
+                handleFailedAttempt();
+            }
+        } else {
+            handleFailedAttempt();
+        }
     }
-}
 
-private void navigateToDashboard(Role role, Employee user) {
+  private void navigateToDashboard(Employee user) {
     this.dispose(); 
-
-    switch (role) {
-        case ADMIN:
-            new AdminDashboard(myHandler, attendanceDao, user).setVisible(true);
-            break;
-            
-        case HR_STAFF:
-            new HRDashboard(myHandler, attendanceDao, user).setVisible(true);
-            break;
-            
-        case ACCOUNTING:
-            new AccountingDashboard(myHandler, attendanceDao, user).setVisible(true);
-            break;
-
-        case IT_STAFF:
-            new ITDashboard(myHandler, attendanceDao, user).setVisible(true);
-            break;
-
-        case REGULAR_STAFF:
-        default:
-            // FIX HERE: Use the UI class name (e.g., MainDashboard)
-            // DO NOT use RegularStaff (that is the data model)
-            new MainDashboard(myHandler, attendanceDao, user).setVisible(true);
-            break;
-    }
+    // We are passing the 'user' object retrieved from the login process
+    new DashboardPanel(employeeService, attendanceDao, authService, user).setVisible(true);
 }
+
     private void handleFailedAttempt() {
         loginAttempts++;
         if (loginAttempts >= 3) {
