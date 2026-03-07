@@ -12,18 +12,19 @@ public class LoginPanel extends JFrame {
     private final EmployeeManagementService employeeService; 
     private final AttendanceDAO attendanceDao; 
     private final UserLibrary authService;
+
     
     private JTextField empField;
     private JPasswordField passField;
     private int loginAttempts = 0;
 
-    public LoginPanel(EmployeeManagementService service, AttendanceDAO attDao, UserLibrary auth) {
-        this.employeeService = service; 
-        this.attendanceDao = attDao;
-        this.authService = auth;
-        initializeUI();
-    }
 
+    public LoginPanel(EmployeeManagementService service, AttendanceDAO dao, UserLibrary auth) {
+    this.employeeService = service;
+    this.attendanceDao = dao;
+    this.authService = auth; // Ensure this matches the field type above
+    initializeUI();
+}
     private void initializeUI() {
         setTitle("MotorPH Login");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);

@@ -1,6 +1,5 @@
 package ui;
 
-import dao.EmployeeDAO; // Added this import
 import java.awt.*;
 import java.util.List;
 import javax.swing.*;
@@ -10,17 +9,23 @@ import model.Employee;
 import service.EmployeeManagementService;
 
 public class EmployeeDashboard extends JPanel {
+    // Variable names are now consistent throughout the class
     private final JTable employeeTable;
     private final DefaultTableModel tableModel;
-    private final EmployeeManagementService service; // Change from DAO to Service
+    private final EmployeeManagementService service; 
+    
     private JTextField txtEmpNo, txtLastName, txtFirstName, txtStatus, txtPosition, txtSupervisor;
 
-    
     public EmployeeDashboard(EmployeeManagementService service) {
-        this.service = service; // Store the service
+        this.service = service; 
         setLayout(new BorderLayout());
 
-        String[] columns = {"ID", "Last Name", "First Name", "Birthday", "Address", "Phone", "SSS", "Philhealth", "TIN", "Pagibig", "Status", "Position", "Supervisor"};
+        // 13 Columns as requested
+        String[] columns = {
+            "ID", "Last Name", "First Name", "Birthday", "Address", "Phone", 
+            "SSS", "Philhealth", "TIN", "Pagibig", "Status", "Position", "Supervisor"
+        };
+
         tableModel = new DefaultTableModel(columns, 0) {
             @Override public boolean isCellEditable(int row, int column) { return false; }
         };
@@ -29,11 +34,13 @@ public class EmployeeDashboard extends JPanel {
         employeeTable.setAutoResizeMode(JTable.AUTO_RESIZE_OFF); 
         employeeTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         
+        // Listener for when a row is clicked
         employeeTable.getSelectionModel().addListSelectionListener(this::handleTableSelection);
         
         add(new JScrollPane(employeeTable), BorderLayout.CENTER);
         add(createBottomPanel(), BorderLayout.SOUTH);
         
+        // Load data initially
         refreshTable();
     }
 
@@ -64,9 +71,40 @@ public class EmployeeDashboard extends JPanel {
         return mainBottom;
     }
 
+    public final void refreshTable() {
+        if (tableModel == null) return;
+        tableModel.setRowCount(0); 
+        
+        try {
+            // N-Tier: UI calls SERVICE
+            List<Employee> list = service.getAllEmployees(); 
+
+            for (Employee emp : list) {
+                tableModel.addRow(new Object[]{
+                    emp.getEmpNo(), 
+                    emp.getLastName(), 
+                    emp.getFirstName(), 
+                    emp.getBirthday(),
+                    emp.getAddress(), 
+                    emp.getPhone(), 
+                    emp.getSss(), 
+                    emp.getPhilhealth(),
+                    emp.getTin(), 
+                    emp.getPagibig(), 
+                    emp.getStatus(), 
+                    emp.getPosition(), 
+                    emp.getSupervisor()
+                });
+            }
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this, "Refresh Error: " + e.getMessage());
+        }
+    }
+
     public void handleTableSelection(ListSelectionEvent e) {
         if (!e.getValueIsAdjusting() && employeeTable.getSelectedRow() != -1) {
             int row = employeeTable.getSelectedRow();
+            // Using indices matching the 13-column array
             txtEmpNo.setText(safeGet(row, 0));
             txtLastName.setText(safeGet(row, 1));
             txtFirstName.setText(safeGet(row, 2));
@@ -76,32 +114,10 @@ public class EmployeeDashboard extends JPanel {
         }
     }
     
-    // Helper to prevent NullPointer if a cell is empty
     private String safeGet(int row, int col) {
         Object val = tableModel.getValueAt(row, col);
         return (val == null) ? "" : val.toString();
     }
 
-    public final void refreshTable() {
-        tableModel.setRowCount(0);
-        try {
-            // DIRECTLY using the DAO that holds the Manuel Garcia data
-            List<Employee> list = dao.getAll(); 
-            for (Employee emp : list) {
-                tableModel.addRow(new Object[]{
-                    emp.getEmpNo(), emp.getLastName(), emp.getFirstName(), emp.getBirthday(),
-                    emp.getAddress(), emp.getPhone(), emp.getSss(), emp.getPhilhealth(),
-                    emp.getTin(), emp.getPagibig(), emp.getStatus(), emp.getPosition(), emp.getSupervisor()
-                });
-            }
-        } catch (Exception e) { System.out.println("Error: " + e.getMessage()); }
-    }
-
-    public String getSelectedEmployeeNo() {
-        int selectedRow = employeeTable.getSelectedRow();
-        return (selectedRow != -1) ? tableModel.getValueAt(selectedRow, 0).toString() : null;
-    }
-
     public void reloadCSV() { refreshTable(); }
-    public void clearFields() { employeeTable.clearSelection(); }
 }

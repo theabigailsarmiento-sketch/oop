@@ -239,4 +239,21 @@ public boolean create(Employee emp) {
     @Override public void updateEmployeeStatus(int id, String stat) { update(findById(id)); }
     @Override public void saveNewPassword(int id, String pass) {}
     @Override public List<LeaveRequest> getAllLeaveRequestsList() { return new ArrayList<>(); }
+
+    
+
+// Correct DAO Implementation
+@Override
+public int getLastEmployeeNumber() {
+    if (employeeCache.isEmpty()) {
+        return 10000;
+    }
+    return Collections.max(employeeCache.keySet());
+}
+
+@Override
+public int getNextAvailableId() {
+    // In the DAO, we just return the next number based on the cache
+    return getLastEmployeeNumber() + 1;
+}
 }

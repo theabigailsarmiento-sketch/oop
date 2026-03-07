@@ -1,4 +1,4 @@
-package ui;
+package util;
 
 import dao.AttendanceDAO;
 import dao.EmployeeDAO;
@@ -13,16 +13,14 @@ import javax.swing.table.DefaultTableModel;
 import model.Employee;
 import model.IAdminOperations;
 import model.RegularStaff;
-import model.Role;
 import service.EmployeeManagementService;
 import service.HRSerbisyo;
 import service.LeaveService;
-import util.EmployeeDetailForm;
 
-public class MainDashboard extends JFrame {
+public class AdminDashboard extends JFrame {
 
     private final EmployeeDAO employeeDao;
-    private final AttendanceDAO attendanceDao;
+    private final AttendanceDAO attendanceDao; 
     private final Employee currentUser;
     private final LeaveService leaveService;
     private final HRSerbisyo hrService;
@@ -31,34 +29,31 @@ public class MainDashboard extends JFrame {
     private final JPanel cardPanel;
     private final CardLayout cardLayout;
 
-    // UI Components
     private JTable empTable; 
     private DefaultTableModel empTableModel;
     private JTable leaveTable;
     private DefaultTableModel leaveApprovalModel;
     private JLabel lblProfilePic; 
 
-
-    // ADD THESE TWO LINES HERE:
     private CardLayout masterlistLayout;
     private JPanel masterlistContainer;
-    
-    // Form fields for Personal Info
+
     private JTextField txtEmpNo, txtLastName, txtFirstName, txtStatus, txtPosition, txtSupervisor;
     private JTextField txtBirthday, txtAddress, txtPhone, txtSss, txtPhilHealth, txtTin, txtPagibig;
     private JTextField txtSalary, txtRice, txtPhoneAllowance, txtClothing, txtGross, txtHourly;
 
-    public MainDashboard(EmployeeDAO dao, AttendanceDAO attDao, Employee user) {
+    // Constructor fixed to accept AttendanceDAO to match LoginPanel call
+    public AdminDashboard(EmployeeDAO dao, AttendanceDAO attDao, Employee user) {
         this.employeeDao = dao;
         this.attendanceDao = attDao;
         this.currentUser = user;
         
-        // Initialize Services
+        
         this.leaveService = new LeaveService(dao, attDao);                                                                               
         this.hrService = new HRSerbisyo(dao);   
         this.employeeManagementService = new EmployeeManagementService(dao);
 
-        setTitle("MotorPH Portal - " + user.getFirstName() + " (" + user.getRole() + ")");
+        setTitle("MotorPH Admin Portal - " + user.getFirstName() + " " + user.getLastName());
         setSize(1300, 850);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
@@ -66,33 +61,21 @@ public class MainDashboard extends JFrame {
         cardLayout = new CardLayout();
         cardPanel = new JPanel(cardLayout);
 
-        // --- 1. ALWAYS ADDED (Public Panels) ---
         cardPanel.add(createHomePanel(), "HOME");
         cardPanel.add(createTimeTrackingPanel(), "TIME");
         cardPanel.add(createLeaveApplicationPanel(), "LEAVE_APP");
-
-        // --- 2. CONDITIONAL ADD (The "Turn On" Logic) ---
-        if (currentUser.getRole() == Role.ADMIN || currentUser.getRole() == Role.HR_STAFF) {
-            cardPanel.add(createMasterlistPanel(), "MASTERLIST");
-            cardPanel.add(createLeaveApprovalPanel(), "LEAVE_APPROVALS");
-        }
+        cardPanel.add(createMasterlistPanel(), "MASTERLIST");
+        cardPanel.add(createLeaveApprovalPanel(), "LEAVE_APPROVALS");
 
         add(createSidebar(), BorderLayout.WEST);
         add(cardPanel, BorderLayout.CENTER);
 
-        // Initial Data Load
         loadPersonalDetails(this.currentUser);     
-        
-        // Only refresh admin tables if role permits
-        if (currentUser.getRole() == Role.ADMIN || currentUser.getRole() == Role.HR_STAFF) {
-            refreshTable();       
-            refreshLeaveTable();
-        }
+        refreshTable();       
+        refreshLeaveTable();
     }
 
-    
-
-     private void loadPersonalDetails(Employee emp) {
+    private void loadPersonalDetails(Employee emp) {
         if (emp == null || txtEmpNo == null) return; 
         DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("M/d/yyyy");
         txtEmpNo.setText(String.valueOf(emp.getEmpNo()));
@@ -114,6 +97,7 @@ public class MainDashboard extends JFrame {
         txtClothing.setText(String.format("%.2f", emp.getClothingAllowance()));
         txtGross.setText(String.format("%.2f", emp.getGrossRate()));
         txtHourly.setText(String.format("%.2f", emp.getHourlyRate()));
+        txtGross.setText(String.format("%.2f", emp.getGrossRate())); 
 
         displayEmployeePhoto(lblProfilePic);
     }
@@ -123,17 +107,15 @@ public class MainDashboard extends JFrame {
     mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
     mainPanel.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
 
-    // Modified infoPanel to accommodate the photo
+  
     JPanel infoPanel = new JPanel(new BorderLayout(15, 0));
     infoPanel.setBorder(BorderFactory.createTitledBorder("Employee Information"));
 
-    // --- PHOTO SECTION ---
     lblProfilePic = new JLabel("No Image");
     lblProfilePic.setPreferredSize(new Dimension(150, 150));
     lblProfilePic.setBorder(BorderFactory.createLineBorder(Color.GRAY));
     lblProfilePic.setHorizontalAlignment(JLabel.CENTER);
     
-    // Wrap photo in a panel so it doesn't stretch awkwardly
     JPanel photoWrapper = new JPanel(new FlowLayout(FlowLayout.CENTER));
     photoWrapper.add(lblProfilePic);
     infoPanel.add(photoWrapper, BorderLayout.WEST);
@@ -149,7 +131,6 @@ public class MainDashboard extends JFrame {
     
     infoPanel.add(fieldsPanel, BorderLayout.CENTER);
 
-    // Remaining panels (No changes here)
     JPanel personalPanel = createGridPanel("Personal Information", 7, 2);
     txtBirthday = addField(personalPanel, "Birthday:", false);
     txtAddress = addField(personalPanel, "Address:", true);
@@ -288,8 +269,8 @@ public class MainDashboard extends JFrame {
         nav.setPreferredSize(new Dimension(220, getHeight()));
         nav.setLayout(new BoxLayout(nav, BoxLayout.Y_AXIS));
         nav.add(Box.createVerticalStrut(30));
-        addSidebarLabel(nav, "Welcome Admin,", 12, Font.PLAIN);
-        addSidebarLabel(nav, currentUser.getFirstName() + "!", 14, Font.BOLD);
+       addSidebarLabel(nav, "Welcome " + currentUser.getRole() + ",", 12, Font.PLAIN);
+    addSidebarLabel(nav, currentUser.getFirstName() + "!", 14, Font.BOLD);
         nav.add(Box.createVerticalStrut(40));
         addNavButton(nav, "Home", e -> cardLayout.show(cardPanel, "HOME"));
         addNavButton(nav, "Time", e -> cardLayout.show(cardPanel, "TIME"));
@@ -365,7 +346,7 @@ public class MainDashboard extends JFrame {
         int confirm = JOptionPane.showConfirmDialog(this, "Are you sure you want to Check In?", "Confirm Check In", JOptionPane.YES_NO_OPTION);
         if (confirm == JOptionPane.YES_OPTION) {
             attendanceDao.recordAttendance(currentUser.getEmpNo(), "Check-in");
-            refresh.run(); // refresh will handle the grey-out automatically
+            refresh.run();
         }
     });
 
@@ -373,7 +354,7 @@ public class MainDashboard extends JFrame {
         int confirm = JOptionPane.showConfirmDialog(this, "Are you sure you want to Check Out?", "Confirm Check Out", JOptionPane.YES_NO_OPTION);
         if (confirm == JOptionPane.YES_OPTION) {
             attendanceDao.recordAttendance(currentUser.getEmpNo(), "Check-out");
-            refresh.run(); // refresh will handle the grey-out automatically
+            refresh.run(); 
         }
     });
 
@@ -451,24 +432,21 @@ public class MainDashboard extends JFrame {
     JTable table = new JTable(model);
     table.setRowHeight(25);
     
-    // Optional: Hide Column 0 (Leave ID) and Column 1 (Emp ID) if you want the UI 
-    // to look exactly like the old one while still holding the data logic.
-    // table.removeColumn(table.getColumnModel().getColumn(0));
-    // table.removeColumn(table.getColumnModel().getColumn(0));
 
-    // Helper to refresh data from CSV
+
+    
     Runnable refreshTable = () -> {
     Object[][] data = leaveService.getLeaveHistory(currentUser.getEmpNo());
     
-    // TRACE: Print to console to see if the new leave is in this array
+    
     System.out.println("UI Loaded " + data.length + " leave records.");
     
     model.setDataVector(data, cols);
-    // Important: Re-apply the renderer every time the data vector changes
+    
     table.getColumnModel().getColumn(8).setCellRenderer(statusRenderer);
 };
 
-    // Initial Load
+   
     refreshTable.run();
 
     btnPickStart.addActionListener(e -> txtStart.setText(new DatePicker(this).setPickedDate()));
@@ -513,12 +491,77 @@ public class MainDashboard extends JFrame {
         JOptionPane.showMessageDialog(this, "Payslip exported to text file.");
     }
 
+    private JPanel createMasterlistPanel() {
+    masterlistLayout = new CardLayout();
+    masterlistContainer = new JPanel(masterlistLayout);
+    JPanel tablePanel = new JPanel(new BorderLayout());
+    String[] columns = {"ID", "Last Name", "First Name", "Status", "Position", "Supervisor"};
+    empTableModel = new DefaultTableModel(columns, 0);
+    empTable = new JTable(empTableModel);
+    
+    JButton btnAddNew = new JButton("Add");
+    JButton btnView = new JButton("View Details");
+    JButton btnDelete = new JButton("Delete");
+    
+    styleButton(btnAddNew, new Color(0, 82, 204));
+    styleButton(btnView, new Color(70, 130, 180));
+    styleButton(btnDelete, new Color(255, 0, 0));
+
+    btnAddNew.addActionListener(e -> masterlistLayout.show(masterlistContainer, "FORM"));
+
    
+    btnView.addActionListener(e -> {
+        int row = empTable.getSelectedRow();
+        if (row != -1) {
+            try {
+                // 1. Get ID from the first column of the selected row
+                int empId = Integer.parseInt(empTable.getValueAt(row, 0).toString());
+                
+                // 2. Call the method you moved to employeeManagementService
+                Object[] details = employeeManagementService.getEmployeeDetailsForForm(empId);
+                
+                // 3. Open the form if data was found
+                if (details != null) {
+                    new EmployeeDetailForm(details);
+                } else {
+                    JOptionPane.showMessageDialog(this, "Employee data not found.");
+                }
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(this, "Error loading details: " + ex.getMessage());
+            }
+        } else {
+            JOptionPane.showMessageDialog(this, "Please select an employee first.");
+        }
+    });
+  
+    btnDelete.addActionListener(e -> {
+        int row = empTable.getSelectedRow();
+        if (row != -1) {
+            int confirm = JOptionPane.showConfirmDialog(this, "Delete this employee?", "Confirm", JOptionPane.YES_NO_OPTION);
+            if (confirm == JOptionPane.YES_OPTION) {
+                int empId = Integer.parseInt(empTable.getValueAt(row, 0).toString());
+                boolean success = employeeManagementService.removeEmployee((IAdminOperations)currentUser, empId);
+                if (success) { refreshTable(); JOptionPane.showMessageDialog(this, "Deleted."); }
+                else { JOptionPane.showMessageDialog(this, "Action Denied (cannot delete CEO)."); }
+            }
+        }
+    });
+
+    JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 15, 10));
+    btnPanel.add(btnAddNew); 
+    btnPanel.add(btnView);  
+    
+    tablePanel.add(new JScrollPane(empTable), BorderLayout.CENTER);
+    tablePanel.add(btnPanel, BorderLayout.SOUTH);
+
+    masterlistContainer.add(tablePanel, "TABLE");
+    masterlistContainer.add(createNewHireFormPanel(), "FORM");
+    
+    return masterlistContainer;
+}
 
 
-/**
- * Sets up a grey placeholder guide for a text field.
- */
+
 private void setupPlaceholder(JTextField field, String hint) {
     field.setText(hint);
     field.setForeground(Color.GRAY);
@@ -541,9 +584,7 @@ private void setupPlaceholder(JTextField field, String hint) {
     });
 }
 
-/**
- * Ensures we don't save the placeholder text as actual data.
- */
+
 private String getActualValue(JTextField field, String hint) {
     String val = field.getText().trim();
     return val.equals(hint) ? "" : val;
@@ -556,7 +597,7 @@ private String getActualValue(JTextField field, String hint) {
     JPanel formContainer = new JPanel();
     formContainer.setLayout(new BoxLayout(formContainer, BoxLayout.Y_AXIS));
 
-    // --- Personal Information ---
+    
     JPanel personalPanel = createFormSection("Personal Information", 0, 2);
     JTextField fName = new JTextField(); 
     JTextField lName = new JTextField();
@@ -566,10 +607,10 @@ private String getActualValue(JTextField field, String hint) {
     JTextField address = new JTextField();
     JTextField phone = new JTextField();
     
-    // APPLY MASK: Phone Field: 000-000-000
+    
     ((javax.swing.text.AbstractDocument) phone.getDocument()).setDocumentFilter(new util.MaskFormatterFilter("###-###-###"));
     
-    // ADDED: Placeholder for Phone
+    
     setupPlaceholder(phone, "000-000-000");
 
     JComboBox<String> gender = new JComboBox<>(new String[]{"Male", "Female", "Other"});
@@ -582,22 +623,22 @@ private String getActualValue(JTextField field, String hint) {
     addFormField(personalPanel, "Address:", address);
     addFormField(personalPanel, "Phone Number:", phone);
 
-    // --- Identification & Status ---
+   
     JPanel govPanel = createFormSection("Identification & Status", 0, 2);
     JTextField sss = new JTextField(); 
     JTextField phil = new JTextField();
     JTextField tin = new JTextField(); 
     JTextField pagibig = new JTextField();
 
-    // APPLY MASKS: SSS and TIN
+  
     ((javax.swing.text.AbstractDocument) sss.getDocument()).setDocumentFilter(new util.MaskFormatterFilter("##-#######-#"));
     ((javax.swing.text.AbstractDocument) tin.getDocument()).setDocumentFilter(new util.MaskFormatterFilter("###-###-###-###"));
     
-    // ADDED: 12-Digit Numeric Filters for Philhealth and Pag-ibig (Ensures CSV format)
+    
     ((javax.swing.text.AbstractDocument) phil.getDocument()).setDocumentFilter(new util.NumericLimitFilter(12));
     ((javax.swing.text.AbstractDocument) pagibig.getDocument()).setDocumentFilter(new util.NumericLimitFilter(12));
 
-    // ADDED: Placeholders for IDs (Updated with Philhealth and Pag-ibig)
+    
     setupPlaceholder(sss, "00-0000000-0");
     setupPlaceholder(phil, "000000000000"); // 12 digits numeric
     setupPlaceholder(tin, "000-000-000-000");
@@ -635,47 +676,38 @@ private String getActualValue(JTextField field, String hint) {
     styleButton(btnSave, new Color(34, 139, 34));
     
     btnSave.addActionListener(e -> {
-        try {
-            Employee newEmp = new RegularStaff(); 
-            newEmp.setFirstName(fName.getText().trim());
-            newEmp.setLastName(lName.getText().trim());
-            
-            try {
-                newEmp.setBirthday(LocalDate.parse(bday.getText().trim(), DateTimeFormatter.ofPattern("MM/dd/yyyy")));
-            } catch (Exception ex) {
-                throw new Exception("Invalid Birthday format. Use MM/dd/yyyy");
-            }
+    try {
+        Employee newEmp = new RegularStaff(); 
+        newEmp.setFirstName(fName.getText().trim());
+        newEmp.setLastName(lName.getText().trim());
+        newEmp.setAddress(address.getText().trim());
+        newEmp.setPhone(getActualValue(phone, "000-000-000"));
+        newEmp.setSss(getActualValue(sss, "00-0000000-0"));
+        newEmp.setTin(getActualValue(tin, "000-000-000-000"));
+        newEmp.setPhilhealth(getActualValue(phil, "000000000000"));
+        newEmp.setPagibig(getActualValue(pagibig, "000000000000"));
+        newEmp.setStatus((String)status.getSelectedItem());
+        newEmp.setPosition(pos.getText().trim());
+        newEmp.setSupervisor((String)superv.getSelectedItem());
+        
+        // Financials (Model)
+        newEmp.setBasicSalary(Double.parseDouble(salary.getText()));
+        newEmp.setRiceSubsidy(Double.parseDouble(rice.getText()));
+        newEmp.setPhoneAllowance(Double.parseDouble(pallow.getText()));
+        newEmp.setClothingAllowance(Double.parseDouble(cloth.getText()));
 
-            newEmp.setAddress(address.getText().trim());
+        
+        boolean success = employeeManagementService.registerEmployee((IAdminOperations)currentUser, newEmp);
 
-            // UPDATED: Handle placeholder logic for ALL guide fields
-            newEmp.setPhone(getActualValue(phone, "000-000-000"));
-            newEmp.setSss(getActualValue(sss, "00-0000000-0"));
-            newEmp.setTin(getActualValue(tin, "000-000-000-000"));
-            newEmp.setPhilhealth(getActualValue(phil, "000000000000"));
-            newEmp.setPagibig(getActualValue(pagibig, "000000000000"));
-            
-            newEmp.setStatus((String)status.getSelectedItem());
-            newEmp.setPosition(pos.getText().trim());
-            newEmp.setSupervisor((String)superv.getSelectedItem());
-            
-            newEmp.setBasicSalary(parseInput(salary.getText()));
-            newEmp.setRiceSubsidy(parseInput(rice.getText()));
-            newEmp.setPhoneAllowance(parseInput(pallow.getText()));
-            newEmp.setClothingAllowance(parseInput(cloth.getText()));
-
-            // Delegate to Service Layer
-            boolean isSaved = employeeManagementService.registerEmployee((IAdminOperations)currentUser, newEmp);
-
-            if (isSaved) {
-                JOptionPane.showMessageDialog(this, "Employee Added Successfully!");
-                refreshTable(); 
-                masterlistLayout.show(masterlistContainer, "TABLE"); 
-            }
-        } catch(Exception ex) { 
-            JOptionPane.showMessageDialog(this, ex.getMessage()); 
+        if (success) {
+            JOptionPane.showMessageDialog(this, "Employee Registered Successfully!");
+            refreshTable(); 
+            masterlistLayout.show(masterlistContainer, "TABLE"); // Navigate back
         }
-    });
+    } catch (Exception ex) {
+        JOptionPane.showMessageDialog(this, "Validation Error: " + ex.getMessage());
+    }
+});
 
     JPanel bp = new JPanel(new FlowLayout(FlowLayout.RIGHT));
     JButton btnBack = new JButton("Cancel"); 
@@ -723,75 +755,6 @@ private String getActualValue(JTextField field, String hint) {
         p.setBorder(BorderFactory.createTitledBorder(BorderFactory.createEtchedBorder(), title, TitledBorder.LEFT, TitledBorder.TOP, new Font("SansSerif", Font.BOLD, 14)));
         return p;
     }
-
-
-    private JPanel createMasterlistPanel() {
-    masterlistLayout = new CardLayout();
-    masterlistContainer = new JPanel(masterlistLayout);
-    JPanel tablePanel = new JPanel(new BorderLayout());
-    String[] columns = {"ID", "Last Name", "First Name", "Status", "Position", "Supervisor"};
-    empTableModel = new DefaultTableModel(columns, 0);
-    empTable = new JTable(empTableModel);
-    
-    JButton btnAddNew = new JButton("Add");
-    JButton btnView = new JButton("View Details");
-    JButton btnDelete = new JButton("Delete");
-    
-    styleButton(btnAddNew, new Color(0, 82, 204));
-    styleButton(btnView, new Color(70, 130, 180));
-    styleButton(btnDelete, new Color(255, 0, 0));
-
-    btnAddNew.addActionListener(e -> masterlistLayout.show(masterlistContainer, "FORM"));
-
-    // --- START: VIEW DETAILS LOGIC ---
-    btnView.addActionListener(e -> {
-        int row = empTable.getSelectedRow();
-        if (row != -1) {
-            try {
-                // Get ID from first column (ID)
-                int empId = Integer.parseInt(empTable.getValueAt(row, 0).toString());
-                
-                // Fetch the full 20-column array from Service
-                Object[] fullDetails = hrService.getEmployeeDetailsForForm(empId);
-                
-                if (fullDetails != null) {
-                    new EmployeeDetailForm(fullDetails); // Open the detail window
-                }
-            } catch (Exception ex) {
-                JOptionPane.showMessageDialog(this, "Error loading details: " + ex.getMessage());
-            }
-        } else {
-            JOptionPane.showMessageDialog(this, "Please select an employee first.");
-        }
-    });
-    // --- END: VIEW DETAILS LOGIC ---
-
-    btnDelete.addActionListener(e -> {
-        int row = empTable.getSelectedRow();
-        if (row != -1) {
-            int confirm = JOptionPane.showConfirmDialog(this, "Delete this employee?", "Confirm", JOptionPane.YES_NO_OPTION);
-            if (confirm == JOptionPane.YES_OPTION) {
-                int empId = Integer.parseInt(empTable.getValueAt(row, 0).toString());
-                boolean success = employeeManagementService.removeEmployee((IAdminOperations)currentUser, empId);
-                if (success) { refreshTable(); JOptionPane.showMessageDialog(this, "Deleted."); }
-                else { JOptionPane.showMessageDialog(this, "Action Denied (cannot delete CEO)."); }
-            }
-        }
-    });
-
-    JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 15, 10));
-    btnPanel.add(btnAddNew); 
-    btnPanel.add(btnView);   // Added the View button to the panel
-    btnPanel.add(btnDelete);
-    
-    tablePanel.add(new JScrollPane(empTable), BorderLayout.CENTER);
-    tablePanel.add(btnPanel, BorderLayout.SOUTH);
-
-    masterlistContainer.add(tablePanel, "TABLE");
-    masterlistContainer.add(createNewHireFormPanel(), "FORM");
-    
-    return masterlistContainer;
-}
 
     class DatePicker { 
         int month = java.util.Calendar.getInstance().get(java.util.Calendar.MONTH);

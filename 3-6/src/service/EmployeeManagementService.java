@@ -4,126 +4,133 @@ import dao.EmployeeDAO;
 import java.util.List;
 import javax.swing.JOptionPane;
 import model.Employee;
-import model.IAdminOperations;
+import model.IAdminOperations; // Added this
+import model.RegularStaff;
 
 public class EmployeeManagementService {
     private final EmployeeDAO employeeDao;
 
     public EmployeeManagementService(EmployeeDAO employeeDao) {
-        this.employeeDao = employeeDao;
+        this.employeeDao = employeeDao; 
     }
 
     /**
-     * Business Rule: Validate and Register a new hire.
-     * This protects the DAO from malformed data.
+     * N-TIER RULE: The UI calls this with raw data. 
+     * The Service creates the Model and performs calculations.
      */
- 
-public boolean registerEmployee(IAdminOperations actor, Employee emp) {
-    if (actor == null || emp == null) return false;
-
-    // --- BUSINESS RULE: VALIDATION ---
-    if (emp.getFirstName().isEmpty() || emp.getLastName().isEmpty()) {
-        JOptionPane.showMessageDialog(null, "First and Last names are required!");
-        return false;
-    }
-
-    // Validate SSS (Format: 00-0000000-0)
-    if (!emp.getSss().matches("^\\d{2}-\\d{7}-\\d{1}$")) {
-        JOptionPane.showMessageDialog(null, "Invalid SSS format! Use: 00-0000000-0");
-        return false;
-    }
-
-    // Validate Phone (Format: 000-000-000)
-    if (!emp.getPhone().matches("^\\d{3}-\\d{3}-\\d{3}$")) {
-        JOptionPane.showMessageDialog(null, "Invalid Phone format! Use: 000-000-000");
-        return false;
-    }
-
-    // --- BUSINESS RULE: AUTOMATION ---
-    // 1. Automatically get the next ID so the UI doesn't have to
-    emp.setEmpNo(employeeDao.getNextAvailableId());
-
-    // 2. Automatically calculate hourly rate (Standard: 21 days, 8 hours)
-    double hourly = emp.getBasicSalary() / 21 / 8;
-    emp.setHourlyRate(hourly);
-
-    // 3. NEW: Automatically calculate Gross Semi-monthly Rate
-    // Formula: Basic Salary + Rice + Phone + Clothing
-    double totalGross = emp.getBasicSalary() + 
-                       emp.getRiceSubsidy() + 
-                       emp.getPhoneAllowance() + 
-                       emp.getClothingAllowance();
-    emp.setGrossRate(totalGross);
-
-    // --- FINAL STEP: CALL DAO ---
-    // Now the DAO receives a "Complete" employee object with all financial math done
-    return employeeDao.addEmployee(emp);
-}
-    /**
-     * Private helper for Business Rules/Validation
-     */
-    private boolean validateEmployeeFormats(Employee emp) {
-        // SSS Format: 00-0000000-0
-        if (!emp.getSss().matches("^\\d{2}-\\d{7}-\\d{1}$")) {
-            showError("Invalid SSS format! Expected: 00-0000000-0");
+    public boolean processNewHire(Employee actor, String fName, String lName, String sss, double salary) {
+        // 1. Permission Check
+        if (!(actor instanceof IAdminOperations)) {
+            showError("Access Denied: Only Admins can register employees.");
             return false;
         }
-        // Phone Format: 000-000-000
-        if (!emp.getPhone().matches("^\\d{3}-\\d{3}-\\d{3}$")) {
-            showError("Invalid Phone format! Expected: 000-000-000");
+
+        // 2. Instantiate the Model (UI doesn't do this anymore)
+        Employee newEmp = new RegularStaff();
+        newEmp.setFirstName(fName);
+        newEmp.setLastName(lName);
+        newEmp.setSss(sss);
+        newEmp.setBasicSalary(salary);
+        
+        // 3. Set Defaults (Rice, Phone, Clothing usually fixed per company policy)
+        newEmp.setRiceSubsidy(1500);
+        newEmp.setPhoneAllowance(500);
+        newEmp.setClothingAllowance(1000);
+
+        // 4. Pass to the existing registration logic for validation and math
+        return registerEmployee((IAdminOperations)actor, newEmp);
+    }
+
+    public boolean registerEmployee(IAdminOperations actor, Employee emp) {
+        if (actor == null || emp == null) return false;
+
+        // Validation Logic
+        if (emp.getFirstName().isEmpty() || emp.getLastName().isEmpty()) {
+            showError("First and Last names are required!");
             return false;
         }
-        // TIN Format: 000-000-000-000
-        if (!emp.getTin().matches("^\\d{3}-\\d{3}-\\d{3}-\\d{3}$")) {
-            showError("Invalid TIN format! Expected: 000-000-000-000");
-            return false;
-        }
-        return true;
-    }
 
-    private void showError(String msg) {
-        JOptionPane.showMessageDialog(null, msg, "Validation Error", JOptionPane.ERROR_MESSAGE);
-    }
+        // Calculation Logic
+        emp.setEmpNo(employeeDao.getNextAvailableId());
+        double hourly = emp.getBasicSalary() / 21 / 8;
+        emp.setHourlyRate(hourly);
 
-    public int getNextAvailableId() {
-        return employeeDao.getNextAvailableId();
-    }
+        double totalGross = emp.getBasicSalary() + emp.getRiceSubsidy() + 
+                           emp.getPhoneAllowance() + emp.getClothingAllowance();
+        emp.setGrossRate(totalGross);
 
-    public boolean removeEmployee(IAdminOperations actor, int id) {
-        if (id == 10001) return false; // Rule: Protect super-admin
-        return employeeDao.deleteEmployee(id);
+        return employeeDao.addEmployee(emp);
     }
 
     public List<Employee> getAll() { 
         return employeeDao.getAll();
     }
 
+    public boolean deleteEmployee(Employee actor, int id) {
+        if (!(actor instanceof IAdminOperations)) return false;
+        if (id == 10001) return false; 
+        return employeeDao.deleteEmployee(id);
+    }
+
+    // Add this inside EmployeeManagementService.java
+public Employee findById(int id) {
+    // Business Rule: We simply pass the request to the DAO to fetch the model
+    return employeeDao.findById(id);
+}
+
+    public Object[] getEmployeeDetailsForForm(int empId) {
+        Employee emp = employeeDao.findById(empId);
+        if (emp == null) return null;
+        return new Object[] {
+            emp.getEmpNo(), emp.getLastName(), emp.getFirstName(), 
+            emp.getBirthday(), emp.getAddress(), emp.getPhone(),
+            emp.getSss(), emp.getPhilhealth(), emp.getTin(), emp.getPagibig(),
+            emp.getStatus(), emp.getPosition(), emp.getSupervisor(),
+            emp.getBasicSalary(), emp.getRiceSubsidy(), 
+            emp.getPhoneAllowance(), emp.getClothingAllowance(),
+            emp.getGrossRate(), emp.getHourlyRate(), emp.getRole()
+        };
+    }
+
+    private void showError(String msg) {
+        JOptionPane.showMessageDialog(null, msg, "Error", JOptionPane.ERROR_MESSAGE);
+    }
 
 
-    // Inside your Service (e.g., EmployeeService.java)
-public Object[] getEmployeeDetailsForForm(int empId) {
-    Employee emp = employeeDao.findById(empId);
-    if (emp == null) return null;
+    public int generateNextEmployeeId() {
+    // This calls the method we defined in your EmployeeDAO interface
+    return employeeDao.getNextAvailableId();
+}
 
-    // 1. Get the base salary from the model
-    double baseSalary = emp.getBasicSalary();
-    
-    // 2. LOGIC: If you need to adjust based on attendance:
-    // double workedDays = attendanceService.getWorkedDays(empId);
-    // double attendanceAdjustedSalary = (baseSalary / 21) * workedDays; 
 
-    return new Object[] {
-        emp.getEmpNo(), emp.getLastName(), emp.getFirstName(), 
-        emp.getBirthday(), emp.getAddress(), emp.getPhone(),
-        emp.getSss(), emp.getPhilhealth(), emp.getTin(), emp.getPagibig(),
-        emp.getStatus(), emp.getPosition(), emp.getSupervisor(),
-        baseSalary,               // Show the salary here
-        emp.getRiceSubsidy(), 
-        emp.getPhoneAllowance(), 
-        emp.getClothingAllowance(),
-        emp.getGrossRate(), 
-        emp.getHourlyRate(), 
-        emp.getRole()
-    };
+// Inside EmployeeManagementService.java
+// Inside EmployeeManagementService.java
+public boolean updateEmployeeDetails(Employee actor, Employee updatedData) {
+    // 1. Validation/Permission check
+    if (!(actor instanceof IAdminOperations)) return false;
+
+    // 2. Business Logic: Recalculate Rates
+    double hourly = updatedData.getBasicSalary() / 21 / 8;
+    updatedData.setHourlyRate(hourly);
+
+    double totalGross = updatedData.getBasicSalary() + updatedData.getRiceSubsidy() + 
+                       updatedData.getPhoneAllowance() + updatedData.getClothingAllowance();
+    updatedData.setGrossRate(totalGross);
+
+    // 3. Call DAO to update cache and save to CSV
+    return employeeDao.update(updatedData);
+}
+
+
+
+// Inside EmployeeManagementService.java
+
+/**
+ * This method satisfies the UI's call to 'removeEmployee'
+ * by redirecting it to your existing 'deleteEmployee' logic.
+ */
+public boolean removeEmployee(IAdminOperations actor, int id) {
+    // We cast the IAdminOperations back to Employee to reuse your existing method
+    return deleteEmployee((Employee) actor, id);
 }
 }

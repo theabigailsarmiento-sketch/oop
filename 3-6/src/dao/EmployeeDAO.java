@@ -34,6 +34,8 @@ public interface EmployeeDAO {
     }
 public Employee getById(int id);
     
-
+ 
+int getLastEmployeeNumber();
+ 
     
 }
