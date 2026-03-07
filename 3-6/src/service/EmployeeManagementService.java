@@ -1,11 +1,13 @@
 package service;
 
 import dao.EmployeeDAO;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import javax.swing.JOptionPane;
-import javax.swing.JTextField;
+import javax.swing.JTextField; // Added this
 import model.Employee;
-import model.IAdminOperations; // Added this
+import model.IAdminOperations;
 import model.RegularStaff;
 
 public class EmployeeManagementService {
@@ -79,19 +81,6 @@ public Employee findById(int id) {
     return employeeDao.findById(id);
 }
 
-    public Object[] getEmployeeDetailsForForm(int empId) {
-        Employee emp = employeeDao.findById(empId);
-        if (emp == null) return null;
-        return new Object[] {
-            emp.getEmpNo(), emp.getLastName(), emp.getFirstName(), 
-            emp.getBirthday(), emp.getAddress(), emp.getPhone(),
-            emp.getSss(), emp.getPhilhealth(), emp.getTin(), emp.getPagibig(),
-            emp.getStatus(), emp.getPosition(), emp.getSupervisor(),
-            emp.getBasicSalary(), emp.getRiceSubsidy(), 
-            emp.getPhoneAllowance(), emp.getClothingAllowance(),
-            emp.getGrossRate(), emp.getHourlyRate(), emp.getRole()
-        };
-    }
 
     private void showError(String msg) {
         JOptionPane.showMessageDialog(null, msg, "Error", JOptionPane.ERROR_MESSAGE);
@@ -135,40 +124,303 @@ public boolean removeEmployee(IAdminOperations actor, int id) {
     return deleteEmployee((Employee) actor, id);
 }
 
+// Inside EmployeeManagementService.java
 public boolean updateEmployeeFromForm(Employee actor, JTextField[] fields) {
     try {
-        // 1. Validation Logic
+        // 1. Permission & Name Validation
+        if (!(actor instanceof IAdminOperations)) {
+            JOptionPane.showMessageDialog(null, "Access Denied.");
+            return false;
+        }
         if (fields[1].getText().trim().isEmpty() || fields[2].getText().trim().isEmpty()) {
-            throw new Exception("Names cannot be empty.");
+            JOptionPane.showMessageDialog(null, "Last Name and First Name are required.");
+            return false;
         }
 
-        // 2. Map fields to a Model object
+        // 2. Date Validation (The fix for PickDate/Manual Input)
+        String bdayText = fields[3].getText().trim();
+        if (bdayText.isEmpty() || bdayText.equals("MM/dd/yyyy")) {
+            JOptionPane.showMessageDialog(null, "Please select or enter a valid Birthday (MM/dd/yyyy).");
+            return false;
+        }
+
+        LocalDate birthday;
+        try {
+            DateTimeFormatter csvFormatter = DateTimeFormatter.ofPattern("MM/dd/yyyy");
+            if (bdayText.contains("-")) {
+                birthday = LocalDate.parse(bdayText); // Handles yyyy-MM-dd
+            } else {
+                birthday = LocalDate.parse(bdayText, csvFormatter); // Handles MM/dd/yyyy
+            }
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(null, "Birthday format error. Please use MM/dd/yyyy.");
+            return false;
+        }
+
+        // 3. Financial Validation (Stripping Decimals & Enforcing 4-digit Rules)
+        long basic = (long) parseDouble(fields[13].getText());
+        long rice = (long) parseDouble(fields[14].getText());
+        long phone = (long) parseDouble(fields[15].getText());
+        long cloth = (long) parseDouble(fields[16].getText());
+
+        // Business Rule: Rice and Phone must be 4 digits (e.g., 1000-9999) 
+        // OR as you requested: Phone between 500 and 5000
+        if (rice < 1000 || rice > 9999) {
+            JOptionPane.showMessageDialog(null, "Rice Subsidy must be a 4-digit amount.");
+            return false;
+        }
+        if (phone < 500 || phone > 5000) {
+            JOptionPane.showMessageDialog(null, "Phone Allowance must be between 500 and 5,000.");
+            return false;
+        }
+
+        // 4. Pag-ibig Validation (12 Digits)
+        String pagibigText = fields[9].getText().trim();
+        if (pagibigText.length() != 12 || !pagibigText.matches("\\d+")) {
+            JOptionPane.showMessageDialog(null, "Pag-ibig number must be exactly 12 digits.");
+            return false;
+        }
+
+        // 5. Map validated data to the Model
         Employee emp = new RegularStaff();
-        emp.setEmpNo(Integer.parseInt(fields[0].getText()));
-        emp.setLastName(fields[1].getText());
-        emp.setFirstName(fields[2].getText());
-        // ... map other fields ...
-        emp.setBasicSalary(Double.parseDouble(fields[13].getText()));
-        emp.setRiceSubsidy(Double.parseDouble(fields[14].getText()));
-        emp.setPhoneAllowance(Double.parseDouble(fields[15].getText()));
-        emp.setClothingAllowance(Double.parseDouble(fields[16].getText()));
+        emp.setEmpNo(Integer.parseInt(fields[0].getText().trim()));
+        emp.setLastName(fields[1].getText().trim());
+        emp.setFirstName(fields[2].getText().trim());
+        emp.setBirthday(birthday);
+        emp.setAddress(fields[4].getText().trim());
+        emp.setPhone(fields[5].getText().trim());
+        emp.setSss(fields[6].getText().trim());
+        emp.setPhilhealth(fields[7].getText().trim());
+        emp.setTin(fields[8].getText().trim());
+        emp.setPagibig(pagibigText);
+        emp.setStatus(fields[10].getText().trim());
+        emp.setPosition(fields[11].getText().trim());
+        emp.setSupervisor(fields[12].getText().trim());
 
-        // 3. Business Logic: Recalculate Rates
-        double hourly = emp.getBasicSalary() / 21 / 8;
-        emp.setHourlyRate(hourly);
+        // 6. Final Calculations (Round to whole numbers for 'ichura')
+        emp.setBasicSalary((double) basic);
+        emp.setRiceSubsidy((double) rice);
+        emp.setPhoneAllowance((double) phone);
+        emp.setClothingAllowance((double) cloth);
         
-        double gross = emp.getBasicSalary() + emp.getRiceSubsidy() + 
-                       emp.getPhoneAllowance() + emp.getClothingAllowance();
-        emp.setGrossRate(gross);
+        emp.setGrossRate((double) (basic + rice + phone + cloth));
+        emp.setHourlyRate((double) Math.round((double) basic / 21 / 8));
 
-        // 4. Pass to DAO
+        // 7. Push clean data to DAO
         return employeeDao.update(emp);
+
     } catch (Exception e) {
-        JOptionPane.showMessageDialog(null, "Update Failed: " + e.getMessage());
+        JOptionPane.showMessageDialog(null, "System Error: " + e.getMessage());
         return false;
     }
 }
 
 
+public boolean saveOrUpdateFromUI(Employee actor, JTextField[] uiFields, boolean isNewHire) {
+    try {
+        // 1. BUSINESS RULE: Check permissions through the Service
+        if (!(actor instanceof IAdminOperations)) {
+            JOptionPane.showMessageDialog(null, "Access Denied: You do not have permission to modify employee records.");
+            return false;
+        }
 
+        // 2. ID VALIDATION (Numbers only, specific lengths)
+        String sssRaw = uiFields[6].getText().replaceAll("[^\\d]", "");
+        String philRaw = uiFields[7].getText().replaceAll("[^\\d]", "");
+        String tinRaw = uiFields[8].getText().replaceAll("[^\\d]", "");
+        String pagibigRaw = uiFields[9].getText().replaceAll("[^\\d]", "");
+
+        // Business Rule: Validate required lengths
+        if (pagibigRaw.length() != 12 || philRaw.length() != 12) {
+            JOptionPane.showMessageDialog(null, "Pag-ibig and Philhealth must be exactly 12 digits.");
+            return false;
+        }
+
+        // 3. FINANCIAL NORMALIZATION (Strip decimals to save as whole numbers)
+        long basic = Long.parseLong(uiFields[13].getText().replaceAll("[^\\d]", ""));
+        long rice = Long.parseLong(uiFields[14].getText().replaceAll("[^\\d]", ""));
+        long phone = Long.parseLong(uiFields[15].getText().replaceAll("[^\\d]", ""));
+        long cloth = Long.parseLong(uiFields[16].getText().replaceAll("[^\\d]", ""));
+
+        // 4. MODEL MAPPING
+        Employee emp = new RegularStaff();
+        
+        // Handle Employee Number
+        emp.setEmpNo(isNewHire ? employeeDao.getNextAvailableId() : Integer.parseInt(uiFields[0].getText().trim()));
+        
+        // Basic Info
+        emp.setLastName(uiFields[1].getText().trim());
+        emp.setFirstName(uiFields[2].getText().trim());
+        emp.setAddress(uiFields[4].getText().trim());
+        emp.setPhone(uiFields[5].getText().trim());
+        
+        // Identification Strings (using UI formatted versions for SSS/TIN to keep dashes)
+        emp.setSss(uiFields[6].getText()); 
+        emp.setPhilhealth(philRaw); 
+        emp.setTin(uiFields[8].getText());
+        emp.setPagibig(pagibigRaw);
+
+        // Employment Details
+        emp.setStatus(uiFields[10].getText().trim());
+        emp.setPosition(uiFields[11].getText().trim());
+        emp.setSupervisor(uiFields[12].getText().trim());
+
+        // Date Parsing
+        String bdayText = uiFields[3].getText().trim();
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MM/dd/yyyy");
+        try {
+            // Check if user left placeholder or empty
+            if(bdayText.isEmpty() || bdayText.equals("MM/dd/yyyy")) {
+                 JOptionPane.showMessageDialog(null, "Please enter or pick a valid Birthday.");
+                 return false;
+            }
+            // Handles both DatePicker (/) and Standard ISO (-) formats
+            emp.setBirthday(bdayText.contains("-") ? LocalDate.parse(bdayText) : LocalDate.parse(bdayText, formatter));
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(null, "Birthday format error. Please use MM/dd/yyyy");
+            return false;
+        }
+
+        // 5. CALCULATIONS (Protected logic before DAO)
+        emp.setBasicSalary((double) basic);
+        emp.setRiceSubsidy((double) rice);
+        emp.setPhoneAllowance((double) phone);
+        emp.setClothingAllowance((double) cloth);
+        
+        // Semi-monthly Gross calculation
+        double totalGross = (double) (basic + rice + phone + cloth);
+        emp.setGrossRate(totalGross);
+        
+        // Hourly rate calculation based on 21 days, 8 hours
+        double hourly = (double) Math.round((double) basic / 21 / 8);
+        emp.setHourlyRate(hourly);
+
+        // 6. DAO CALL: Final persistence to CSV
+        return isNewHire ? employeeDao.addEmployee(emp) : employeeDao.update(emp);
+
+    } catch (NumberFormatException e) {
+        JOptionPane.showMessageDialog(null, "Financial error: Please enter whole numbers in salary fields.");
+        return false;
+    } catch (Exception e) {
+        JOptionPane.showMessageDialog(null, "System Error: " + e.getMessage());
+        return false;
+    }
+}
+
+// Helper methods to keep code clean
+private double validateDouble(String input, String fieldName) throws Exception {
+    try {
+        return Double.parseDouble(input.trim().replace(",", "")); //
+    } catch (NumberFormatException e) {
+        throw new Exception(fieldName + " must be a valid number."); //
+    }
+}
+
+private String cleanNull(String input) {
+    return (input == null || input.trim().equalsIgnoreCase("null")) ? "" : input.trim(); //
+}
+
+private double parseDouble(String input) {
+    try {
+        return Double.parseDouble(input.trim().replace(",", ""));
+    } catch (Exception e) {
+        return 0.0;
+    }
+}
+private String parseDate(String input) {
+    String date = cleanNull(input);
+    return date.isEmpty() ? "01/01/1900" : date; // Default date if missing
+}
+
+
+public Object[] getEmployeeDetailsForForm(int empId) {
+    Employee emp = employeeDao.findById(empId);
+    if (emp == null) return null;
+
+    // Business Rule: Format financial data as whole numbers (no decimals) for the UI
+    return new Object[] {
+        emp.getEmpNo(), 
+        emp.getLastName(), 
+        emp.getFirstName(), 
+        emp.getBirthday(), 
+        emp.getAddress(), 
+        emp.getPhone(),
+        emp.getSss(), 
+        emp.getPhilhealth(), 
+        emp.getTin(), 
+        emp.getPagibig(),
+        emp.getStatus(), 
+        emp.getPosition(), 
+        emp.getSupervisor(),
+        formatWholeNumber(emp.getBasicSalary()),      // Index 13
+        formatWholeNumber(emp.getRiceSubsidy()),      // Index 14
+        formatWholeNumber(emp.getPhoneAllowance()),   // Index 15
+        formatWholeNumber(emp.getClothingAllowance()),// Index 16
+        formatWholeNumber(emp.getGrossRate()),        // Index 17
+        formatWholeNumber(emp.getHourlyRate()),       // Index 18
+        emp.getRole()
+    };
+}
+
+/**
+ * Helper to ensure the UI receives a clean string without ".0"
+ */
+private String formatWholeNumber(double value) {
+    return String.format("%.0f", value);
+}
+
+
+
+
+
+// Inside EmployeeManagementService.java
+public String[] getSupervisorsForPosition(String position) {
+    if (position == null) return new String[]{"N/A"};
+
+    switch (position) {
+        case "Chief Operating Officer":
+        case "Chief Finance Officer":
+        case "Chief Marketing Officer":
+        case "Account Manager":
+            return new String[]{"Garcia, Manuel III"};
+
+        case "IT Operations and Systems":
+        case "HR Manager":
+            return new String[]{"Lim, Antonio"};
+
+        case "HR Team Leader":
+            return new String[]{"Villanueva, Andrea Mae"};
+
+        case "HR Rank and File":
+            return new String[]{"San Jose, Brad"};
+
+        case "Accounting Head":
+            return new String[]{"Aquino, Bianca Sofia"};
+
+        case "Payroll Manager":
+            return new String[]{"Alvaro, Roderick"};
+
+        case "Payroll Team Leader":
+        case "Payroll Rank and File":
+            return new String[]{"Salcedo, Anthony"};
+
+        case "Account Team Leader":
+            return new String[]{"Romualdez, Fredrick"};
+
+        case "Account Rank and File":
+            return new String[]{"Mata, Christian", "De Leon, Selena"};
+
+        // Mapping for the specific positions you requested:
+        case "Sales & Marketing":
+        case "Supply Chain and Logistics":
+        case "Customer Service and Relations":
+            return new String[]{"Reyes, Isabella"};
+
+        case "Chief Executive Officer":
+            return new String[]{"N/A"};
+
+        default:
+            return new String[]{"N/A"};
+    }
+}
 }

@@ -7,9 +7,9 @@ import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableRowSorter;
+import javax.swing.text.AbstractDocument;
 import model.Employee;
 import model.IAdminOperations;
-import model.RegularStaff;
 import service.EmployeeManagementService;
 import util.EmployeeDetailForm;
 
@@ -137,181 +137,283 @@ btnView.addActionListener(e -> {
         return masterlistContainer;
     }
 
-    private JPanel createNewHireFormPanel() {
-        JPanel mainPanel = new JPanel(new BorderLayout(20, 20));
-        mainPanel.setBorder(BorderFactory.createEmptyBorder(20, 40, 20, 40));
-        
-        JPanel formContainer = new JPanel();
-        formContainer.setLayout(new BoxLayout(formContainer, BoxLayout.Y_AXIS));
+ private JPanel createNewHireFormPanel() {
+    JPanel mainPanel = new JPanel(new BorderLayout(20, 20));
+    mainPanel.setBorder(BorderFactory.createEmptyBorder(20, 40, 20, 40));
+    
+    JPanel formContainer = new JPanel();
+    formContainer.setLayout(new BoxLayout(formContainer, BoxLayout.Y_AXIS));
 
-        JPanel personalPanel = createFormSection("Personal Information", 0, 2);
-        JTextField fName = new JTextField(); 
-        JTextField lName = new JTextField();
-        JTextField bday = new JTextField("MM/dd/yyyy");
-        JButton btnPickBday = new JButton("📅 Pick Date");
-        
-        btnPickBday.addActionListener(e -> {
-            DatePicker picker = new DatePicker(mainPanel);
-            String pickedValue = picker.setPickedDate();
-            if (!pickedValue.isEmpty()) {
-                bday.setText(pickedValue);
-                bday.setForeground(Color.BLACK);
-            }
-        });
+    // --- SECTION 1: Personal Information ---
+    JPanel personalPanel = createFormSection("Personal Information", 0, 2);
+    JTextField fName = new JTextField(); 
+    setupPlaceholder(fName, "Juan");
 
-        JTextField address = new JTextField();
-        JTextField phone = new JTextField();
-        ((javax.swing.text.AbstractDocument) phone.getDocument()).setDocumentFilter(new util.MaskFormatterFilter("###-###-###"));
-        setupPlaceholder(phone, "000-000-000");
+    JTextField lName = new JTextField();
+    setupPlaceholder(lName, "Delacruz");
 
-        JComboBox<String> gender = new JComboBox<>(new String[]{"Male", "Female", "Other"});
-        addFormField(personalPanel, "First Name *", fName);
-        addFormField(personalPanel, "Last Name *", lName);
-        personalPanel.add(new JLabel("Birthday *")); 
-        JPanel bw = new JPanel(new BorderLayout()); bw.add(bday); bw.add(btnPickBday, BorderLayout.EAST);
-        personalPanel.add(bw);
-        addFormField(personalPanel, "Gender:", gender);
-        addFormField(personalPanel, "Address:", address);
-        addFormField(personalPanel, "Phone Number:", phone);
+    JTextField bday = new JTextField();
+    setupPlaceholder(bday, "MM/dd/yyyy");
 
-        // ... Identification and Status panels (Simplified for space, but logic is same)
-        JPanel govPanel = createFormSection("Identification & Status", 0, 2);
-        JTextField sss = new JTextField(); setupPlaceholder(sss, "00-0000000-0");
-        JTextField phil = new JTextField(); setupPlaceholder(phil, "000000000000");
-        JTextField tin = new JTextField(); setupPlaceholder(tin, "000-000-000-000");
-        JTextField pagibig = new JTextField(); setupPlaceholder(pagibig, "000000000000");
-        JComboBox<String> status = new JComboBox<>(new String[]{"Regular", "Probationary"});
-        
-        addFormField(govPanel, "SSS #:", sss);
-        addFormField(govPanel, "Philhealth #:", phil);
-        addFormField(govPanel, "TIN #:", tin);
-        addFormField(govPanel, "Pag-ibig #:", pagibig);
-        addFormField(govPanel, "Status:", status);
+    JButton btnPickBday = new JButton("📅 Pick Date");
+    btnPickBday.addActionListener(e -> {
+        DatePicker picker = new DatePicker(mainPanel); 
+        String pickedValue = picker.setPickedDate(); 
+        if (pickedValue != null && !pickedValue.isEmpty()) {
+            bday.setText(pickedValue);
+            bday.setForeground(Color.BLACK);
+            bday.setFont(bday.getFont().deriveFont(Font.PLAIN));
+        }
+    });
 
-        JPanel jobPanel = createFormSection("Employment", 0, 2);
-        JTextField pos = new JTextField();
-        JComboBox<String> superv = new JComboBox<>(new String[]{"N/A", "Garcia, Manuel III", "Lim, Antonio", "Villanueva, Andrea"}); 
-        addFormField(jobPanel, "Position:", pos);
-        addFormField(jobPanel, "Supervisor:", superv);
+    JTextField address = new JTextField();
+    setupPlaceholder(address, "e.g. 123 Street, City, Province");
 
-        JPanel financePanel = createFormSection("Financial Information", 0, 4);
-        JTextField salary = new JTextField("0.00");
-        JTextField rice = new JTextField("0.00");
-        JTextField pallow = new JTextField("0.00");
-        JTextField cloth = new JTextField("0.00");
-        addFormField(financePanel, "Salary:", salary);
-        addFormField(financePanel, "Rice:", rice);
-        addFormField(financePanel, "Phone:", pallow);
-        addFormField(financePanel, "Clothing:", cloth);
+    JTextField phone = new JTextField();
+    applyFilters(5, phone); 
+    setupPlaceholder(phone, "000-000-000");
 
-        formContainer.add(personalPanel); formContainer.add(govPanel); formContainer.add(jobPanel); formContainer.add(financePanel);
+    addFormField(personalPanel, "First Name *", fName);
+    addFormField(personalPanel, "Last Name *", lName);
+    personalPanel.add(new JLabel("Birthday *")); 
+    JPanel bw = new JPanel(new BorderLayout()); bw.add(bday); bw.add(btnPickBday, BorderLayout.EAST);
+    personalPanel.add(bw);
+    addFormField(personalPanel, "Address:", address);
+    addFormField(personalPanel, "Phone Number:", phone);
 
-        JButton btnSave = new JButton("Confirm Hire");
-        styleButton(btnSave, new Color(34, 139, 34));
-        btnSave.addActionListener(e -> {
-            try {
-                String birthDateStr = bday.getText().trim();
-                java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern("MM/dd/yyyy");
-                java.time.LocalDate birthDate = java.time.LocalDate.parse(birthDateStr, formatter);
-                
-                Employee newEmp = new RegularStaff(); 
-                newEmp.setFirstName(fName.getText().trim());
-                newEmp.setLastName(lName.getText().trim());
-                newEmp.setBirthday(birthDate);
-                newEmp.setBasicSalary(Double.parseDouble(salary.getText().trim()));
-                // ... set other fields
+    // --- SECTION 2: Identification & Status ---
+    JPanel govPanel = createFormSection("Identification & Status", 0, 2);
+    JTextField sss = new JTextField(); 
+    applyFilters(6, sss);
+    setupPlaceholder(sss, "00-0000000-0");
 
-                if (employeeManagementService.registerEmployee((IAdminOperations)currentUser, newEmp)) {
-                    JOptionPane.showMessageDialog(this, "Success!");
-                    refreshTable(); 
-                    masterlistLayout.show(masterlistContainer, "TABLE"); 
-                }
-            } catch (Exception ex) { JOptionPane.showMessageDialog(this, "Error: " + ex.getMessage()); }
-        });
+    JTextField phil = new JTextField(); 
+    applyFilters(7, phil);
+    setupPlaceholder(phil, "000000000000");
 
-        JPanel bp = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        JButton btnBack = new JButton("Cancel"); 
-        btnBack.addActionListener(e -> masterlistLayout.show(masterlistContainer, "TABLE"));
-        bp.add(btnBack); bp.add(btnSave);
-        
-        mainPanel.add(new JScrollPane(formContainer), BorderLayout.CENTER);
-        mainPanel.add(bp, BorderLayout.SOUTH);
-        return mainPanel;
+    JTextField tin = new JTextField(); 
+    applyFilters(8, tin);
+    setupPlaceholder(tin, "000-000-000-000");
+
+    JTextField pagibig = new JTextField(); 
+    applyFilters(9, pagibig);
+    setupPlaceholder(pagibig, "000000000000");
+    
+    JComboBox<String> status = new JComboBox<>(new String[]{"Regular", "Probationary"});
+    addFormField(govPanel, "SSS #:", sss);
+    addFormField(govPanel, "Philhealth #:", phil);
+    addFormField(govPanel, "TIN #:", tin);
+    addFormField(govPanel, "Pag-ibig #:", pagibig);
+    addFormField(govPanel, "Status:", status);
+
+    // --- SECTION 3: Employment ---
+    JPanel jobPanel = createFormSection("Employment", 0, 2);
+    
+    String[] positions = {
+        "Chief Executive Officer", "Chief Operating Officer", "Chief Finance Officer", 
+        "Chief Marketing Officer", "IT Operations and Systems", "HR Manager", 
+        "HR Team Leader", "HR Rank and File", "Accounting Head", "Payroll Manager", 
+        "Payroll Team Leader", "Payroll Rank and File", "Account Manager", 
+        "Account Team Leader", "Account Rank and File", "Sales & Marketing", 
+        "Supply Chain and Logistics", "Customer Service and Relations"
+    };
+    JComboBox<String> posCombo = new JComboBox<>(positions);
+    JComboBox<String> supervCombo = new JComboBox<>(new String[]{"N/A"});
+
+    posCombo.addActionListener(e -> {
+        String selectedPos = (String) posCombo.getSelectedItem();
+        String[] availableSupervisors = employeeManagementService.getSupervisorsForPosition(selectedPos);
+        supervCombo.removeAllItems();
+        for (String s : availableSupervisors) {
+            supervCombo.addItem(s);
+        }
+    });
+
+    addFormField(jobPanel, "Position:", posCombo);
+    addFormField(jobPanel, "Supervisor:", supervCombo);
+
+    // --- SECTION 4: Financial Information ---
+    JPanel financePanel = createFormSection("Financial Information", 0, 4);
+    JTextField salary = new JTextField("0"); applyFilters(13, salary);
+    JTextField rice = new JTextField("0"); applyFilters(14, rice);
+    JTextField pallow = new JTextField("0"); applyFilters(15, pallow);
+    JTextField cloth = new JTextField("0"); applyFilters(16, cloth);
+
+    addFormField(financePanel, "Salary:", salary);
+    addFormField(financePanel, "Rice:", rice);
+    addFormField(financePanel, "Phone:", pallow);
+    addFormField(financePanel, "Clothing:", cloth);
+
+    formContainer.add(personalPanel); formContainer.add(govPanel); formContainer.add(jobPanel); formContainer.add(financePanel);
+
+    // --- ACTION BUTTONS ---
+    JButton btnSave = new JButton("Confirm Hire");
+    styleButton(btnSave, new Color(34, 139, 34));
+    
+    btnSave.addActionListener(e -> {
+        JTextField[] fieldsForService = new JTextField[17]; 
+        fieldsForService[0] = new JTextField("0"); 
+        fieldsForService[1] = lName;
+        fieldsForService[2] = fName;
+        fieldsForService[3] = bday;
+        fieldsForService[4] = address;
+        fieldsForService[5] = phone;
+        fieldsForService[6] = sss;
+        fieldsForService[7] = phil;
+        fieldsForService[8] = tin;
+        fieldsForService[9] = pagibig;
+        fieldsForService[10] = new JTextField(status.getSelectedItem().toString());
+        fieldsForService[11] = new JTextField(posCombo.getSelectedItem().toString());
+        fieldsForService[12] = new JTextField(supervCombo.getSelectedItem().toString());
+        fieldsForService[13] = salary;
+        fieldsForService[14] = rice;
+        fieldsForService[15] = pallow;
+        fieldsForService[16] = cloth;
+
+        if (employeeManagementService.saveOrUpdateFromUI((Employee)currentUser, fieldsForService, true)) {
+            JOptionPane.showMessageDialog(this, "Employee Registered Successfully!");
+            refreshTable(); 
+            masterlistLayout.show(masterlistContainer, "TABLE"); 
+        }
+    });
+
+    JPanel bp = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+    JButton btnBack = new JButton("Cancel"); 
+    btnBack.addActionListener(e -> masterlistLayout.show(masterlistContainer, "TABLE"));
+    bp.add(btnBack); bp.add(btnSave);
+    
+    mainPanel.add(new JScrollPane(formContainer), BorderLayout.CENTER);
+    mainPanel.add(bp, BorderLayout.SOUTH);
+    return mainPanel;
+}
+
+
+private void applyFilters(int index, JTextField field) {
+    AbstractDocument doc = (AbstractDocument) field.getDocument();
+    
+    switch (index) {
+        case 5: // Phone #
+            doc.setDocumentFilter(new util.MaskFormatterFilter("###-###-###"));
+            break;
+        case 6: // SSS # (##-#######-#)
+            doc.setDocumentFilter(new util.MaskFormatterFilter("##-#######-#"));
+            break;
+        case 7: // Philhealth (12 digits raw)
+        case 9: // Pag-ibig (12 digits raw)
+            doc.setDocumentFilter(new util.NumericLimitFilter(12));
+            break;
+        case 8: // TIN # (###-###-###-###)
+            doc.setDocumentFilter(new util.MaskFormatterFilter("###-###-###-###"));
+            break;
+        case 13: // Salary
+        case 14: // Rice
+        case 15: // Phone
+        case 16: // Clothing
+            // Block all non-digits and limit to 7 digits
+            doc.setDocumentFilter(new util.NumericLimitFilter(7));
+            break;
     }
-
+}
     // --- DATE PICKER CLASS ---
-    class DatePicker {
-        int month, year;
-        String day = "";
-        JDialog d;
-        JButton[] button = new JButton[42];
+    public class DatePicker {
+    private int month, year;
+    private int dayInt = 0; // Use an int to store the final selection
+    private JDialog d;
+    private JButton[] button = new JButton[42];
 
-        public DatePicker(Component parent) {
-            Window parentWindow = SwingUtilities.getWindowAncestor(parent);
-            d = new JDialog(parentWindow instanceof Frame ? (Frame)parentWindow : null); 
-            d.setModal(true); 
-            d.setTitle("Select Date");
-            d.setLayout(new BorderLayout());
+    public DatePicker(Component parent) {
+        Window parentWindow = SwingUtilities.getWindowAncestor(parent);
+        d = new JDialog(parentWindow instanceof Frame ? (Frame)parentWindow : null); 
+        d.setModal(true); 
+        d.setTitle("Select Date");
+        d.setLayout(new BorderLayout());
 
-            java.util.Calendar now = java.util.Calendar.getInstance();
-            month = now.get(java.util.Calendar.MONTH);
-            year = now.get(java.util.Calendar.YEAR) - 18;
+        java.util.Calendar now = java.util.Calendar.getInstance();
+        month = now.get(java.util.Calendar.MONTH);
+        year = now.get(java.util.Calendar.YEAR) - 18;
 
-            JPanel p1 = new JPanel(new GridLayout(7, 7));
-            String[] header = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" };
+        JPanel p1 = new JPanel(new GridLayout(6, 7)); // Adjusted grid for 42 buttons
+        String[] header = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" };
 
-            for (int x = 0; x < button.length; x++) {
-                final int selection = x;
-                button[x] = new JButton();
-                if (x < 7) {
-                    button[x].setText(header[x]);
-                    button[x].setForeground(Color.RED);
-                    button[x].setEnabled(false);
-                } else {
-                    button[x].addActionListener(e -> {
-                        if (!button[selection].getText().isEmpty()) {
-                            day = button[selection].getText();
-                            d.dispose(); 
-                        }
-                    });
-                }
-                p1.add(button[x]);
+        // Create the calendar grid
+        for (int x = 0; x < button.length; x++) {
+            final int selection = x;
+            button[x] = new JButton();
+            
+            // Header buttons (Sun-Sat)
+            if (x < 7) {
+                button[x].setText(header[x]);
+                button[x].setForeground(Color.RED);
+                button[x].setEnabled(false);
+                button[x].setBorderPainted(false);
+            } else {
+                button[x].addActionListener(e -> {
+                    String btnText = button[selection].getText();
+                    if (!btnText.isEmpty()) {
+                        // CONVERSION: Turn the String "15" into an int 15
+                        dayInt = Integer.parseInt(btnText);
+                        d.dispose(); // Close the dialog
+                    }
+                });
             }
-
-            JPanel p2 = new JPanel(new FlowLayout());
-            JComboBox<String> monthCombo = new JComboBox<>(new String[]{"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"});
-            monthCombo.setSelectedIndex(month);
-            Integer[] yearsArr = new Integer[80]; 
-            int startYear = now.get(java.util.Calendar.YEAR) - 18;
-            for (int i = 0; i < 80; i++) yearsArr[i] = startYear - i;
-            JComboBox<Integer> yearCombo = new JComboBox<>(yearsArr);
-            yearCombo.setSelectedItem(year);
-
-            monthCombo.addActionListener(e -> { month = monthCombo.getSelectedIndex(); displayDate(); });
-            yearCombo.addActionListener(e -> { year = (Integer) yearCombo.getSelectedItem(); displayDate(); });
-
-            p2.add(monthCombo); p2.add(yearCombo);
-            d.add(p2, BorderLayout.NORTH); d.add(p1, BorderLayout.CENTER);
-            d.pack(); d.setLocationRelativeTo(parent);
-            displayDate();
-            d.setVisible(true);
+            p1.add(button[x]);
         }
 
-        public void displayDate() {
-            for (int x = 7; x < button.length; x++) button[x].setText("");
-            java.util.Calendar cal = java.util.Calendar.getInstance();
-            cal.set(year, month, 1);
-            int dayOfWeek = cal.get(java.util.Calendar.DAY_OF_WEEK);
-            int daysInMonth = cal.getActualMaximum(java.util.Calendar.DAY_OF_MONTH);
-            for (int x = 6 + dayOfWeek, d = 1; d <= daysInMonth; x++, d++) button[x].setText("" + d);
-        }
+        // --- Selection Logic (Months and Years) ---
+        JPanel p2 = new JPanel(new FlowLayout());
+        JComboBox<String> monthCombo = new JComboBox<>(new String[]{"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"});
+        monthCombo.setSelectedIndex(month);
+        
+        Integer[] yearsArr = new Integer[80]; 
+        int startYear = now.get(java.util.Calendar.YEAR) - 18;
+        for (int i = 0; i < 80; i++) yearsArr[i] = startYear - i;
+        JComboBox<Integer> yearCombo = new JComboBox<>(yearsArr);
+        yearCombo.setSelectedItem(year);
 
-        public String setPickedDate() {
-            if (day.isEmpty()) return "";
-            return String.format("%02d/%02d/%04d", month + 1, Integer.parseInt(day), year);
+        monthCombo.addActionListener(e -> { month = monthCombo.getSelectedIndex(); displayDate(); });
+        yearCombo.addActionListener(e -> { year = (Integer) yearCombo.getSelectedItem(); displayDate(); });
+
+        p2.add(monthCombo); p2.add(yearCombo);
+        d.add(p2, BorderLayout.NORTH); 
+        d.add(p1, BorderLayout.CENTER);
+        d.pack(); 
+        d.setLocationRelativeTo(parent);
+        displayDate();
+        d.setVisible(true); // This blocks code execution until d.dispose() is called
+    }
+
+    public void displayDate() {
+        for (int x = 7; x < button.length; x++) button[x].setText("");
+        java.util.Calendar cal = java.util.Calendar.getInstance();
+        cal.set(year, month, 1);
+        int dayOfWeek = cal.get(java.util.Calendar.DAY_OF_WEEK);
+        int daysInMonth = cal.getActualMaximum(java.util.Calendar.DAY_OF_MONTH);
+        
+        // Populate numbers in the grid
+        for (int x = 6 + dayOfWeek, dayNum = 1; dayNum <= daysInMonth; x++, dayNum++) {
+            if (x < button.length) {
+                button[x].setText("" + dayNum);
+            }
         }
     }
 
+    /**
+     * N-TIER UI METHOD: 
+     * This prepares the final 'ichura' (format) of the date 
+     * for the text field.
+     */
+    public String setPickedDate() {
+        if (dayInt == 0) return ""; 
+
+        java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("MM/dd/yyyy");
+        java.util.Calendar cal = java.util.Calendar.getInstance();
+        
+        // No more error: all arguments are now 'int'
+        cal.set(year, month, dayInt); 
+        
+        return sdf.format(cal.getTime());
+    }
+}
     public final void refreshTable() {
         if (empTableModel == null) return;
         empTableModel.setRowCount(0);
@@ -349,4 +451,8 @@ btnView.addActionListener(e -> {
         p.setBorder(BorderFactory.createTitledBorder(BorderFactory.createEtchedBorder(), title));
         return p;
     }
+
+
+
+    
 }

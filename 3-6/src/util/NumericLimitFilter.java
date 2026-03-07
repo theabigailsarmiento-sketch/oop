@@ -12,16 +12,24 @@ public class NumericLimitFilter extends DocumentFilter {
         this.maxLength = maxLength;
     }
 
-    @Override
-    public void replace(FilterBypass fb, int offset, int length, String text, AttributeSet attrs) throws BadLocationException {
-        String digits = text.replaceAll("[^\\d]", "");
-        int currentLength = fb.getDocument().getLength();
-        int newLength = currentLength - length + digits.length();
 
-        if (newLength <= maxLength) {
-            super.replace(fb, offset, length, digits, attrs);
-        } else {
-            Toolkit.getDefaultToolkit().beep();
-        }
+
+    // Inside util.NumericLimitFilter
+@Override
+public void replace(FilterBypass fb, int offset, int length, String text, AttributeSet attrs) 
+        throws BadLocationException {
+    
+    // Only allow digits
+    if (!text.matches("\\d*")) {
+        Toolkit.getDefaultToolkit().beep();
+        return;
     }
+
+    int currentLength = fb.getDocument().getLength();
+    if ((currentLength - length + text.length()) <= maxLength) {
+        super.replace(fb, offset, length, text, attrs);
+    } else {
+        Toolkit.getDefaultToolkit().beep();
+    }
+}
 }
