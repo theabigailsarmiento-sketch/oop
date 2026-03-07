@@ -86,21 +86,26 @@ public class EmployeeDatabase extends JPanel {
 
         btnAddNew.addActionListener(e -> masterlistLayout.show(masterlistContainer, "FORM"));
 
-        btnView.addActionListener(e -> {
-            int row = empTable.getSelectedRow();
-            if (row != -1) {
-                int modelRow = empTable.convertRowIndexToModel(row); // Important when filtering
-                try {
-                    int empId = Integer.parseInt(empTableModel.getValueAt(modelRow, 0).toString());
-                    Object[] details = employeeManagementService.getEmployeeDetailsForForm(empId);
-                    if (details != null) {
-                        new EmployeeDetailForm(details).setVisible(true);
-                    }
-                } catch (Exception ex) {
-                    JOptionPane.showMessageDialog(this, "Error: " + ex.getMessage());
-                }
+       // Inside EmployeeDatabase.java -> createMasterlistPanel()
+btnView.addActionListener(e -> {
+    int row = empTable.getSelectedRow();
+    if (row != -1) {
+        int modelRow = empTable.convertRowIndexToModel(row); 
+        try {
+            int empId = Integer.parseInt(empTableModel.getValueAt(modelRow, 0).toString());
+            
+            // Requesting the Model data through the Service Layer
+            Object[] details = employeeManagementService.getEmployeeDetailsForForm(empId);
+            
+            if (details != null) {
+                // Launching the UI (Detail Form) and passing the Service + User
+                new EmployeeDetailForm(details, employeeManagementService, currentUser).setVisible(true);
             }
-        });
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "Error: " + ex.getMessage());
+        }
+    }
+});
       
         btnDelete.addActionListener(e -> {
             int row = empTable.getSelectedRow();

@@ -3,6 +3,7 @@ package service;
 import dao.EmployeeDAO;
 import java.util.List;
 import javax.swing.JOptionPane;
+import javax.swing.JTextField;
 import model.Employee;
 import model.IAdminOperations; // Added this
 import model.RegularStaff;
@@ -133,4 +134,41 @@ public boolean removeEmployee(IAdminOperations actor, int id) {
     // We cast the IAdminOperations back to Employee to reuse your existing method
     return deleteEmployee((Employee) actor, id);
 }
+
+public boolean updateEmployeeFromForm(Employee actor, JTextField[] fields) {
+    try {
+        // 1. Validation Logic
+        if (fields[1].getText().trim().isEmpty() || fields[2].getText().trim().isEmpty()) {
+            throw new Exception("Names cannot be empty.");
+        }
+
+        // 2. Map fields to a Model object
+        Employee emp = new RegularStaff();
+        emp.setEmpNo(Integer.parseInt(fields[0].getText()));
+        emp.setLastName(fields[1].getText());
+        emp.setFirstName(fields[2].getText());
+        // ... map other fields ...
+        emp.setBasicSalary(Double.parseDouble(fields[13].getText()));
+        emp.setRiceSubsidy(Double.parseDouble(fields[14].getText()));
+        emp.setPhoneAllowance(Double.parseDouble(fields[15].getText()));
+        emp.setClothingAllowance(Double.parseDouble(fields[16].getText()));
+
+        // 3. Business Logic: Recalculate Rates
+        double hourly = emp.getBasicSalary() / 21 / 8;
+        emp.setHourlyRate(hourly);
+        
+        double gross = emp.getBasicSalary() + emp.getRiceSubsidy() + 
+                       emp.getPhoneAllowance() + emp.getClothingAllowance();
+        emp.setGrossRate(gross);
+
+        // 4. Pass to DAO
+        return employeeDao.update(emp);
+    } catch (Exception e) {
+        JOptionPane.showMessageDialog(null, "Update Failed: " + e.getMessage());
+        return false;
+    }
+}
+
+
+
 }
