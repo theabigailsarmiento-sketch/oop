@@ -8,6 +8,10 @@ import java.time.format.DateTimeFormatter;
 import javax.swing.*;
 import model.Employee;
 import service.EmployeeManagementService;
+import service.LeaveService;
+
+
+
 
 public class DashboardPanel extends JFrame {
     private final CardLayout cardLayout;
@@ -18,7 +22,8 @@ public class DashboardPanel extends JFrame {
     private final UserLibrary authService;
     private final Employee currentUser; 
 
-    // Field for the actual Database class you created
+    public LeaveService leaveService; // Use the exact class name from your provided code
+
     public EmployeeDatabase databasePanel;
 
     private final String userRole;
@@ -27,16 +32,11 @@ public class DashboardPanel extends JFrame {
     private final String userFirstname;
     private final String userLastname;
 
-    // UI Components for the Home Panel
-    private JTextField txtEmpNo, txtLastName, txtFirstName, txtStatus, txtPosition, txtSupervisor;
-    private JTextField txtBirthday, txtAddress, txtPhone, txtSss, txtPhilHealth, txtTin, txtPagibig;
-    private JLabel lblProfilePic;
-
     // Panels
     public JPanel personalInfoPanel;    
     public AddEmployeePanel addEmpPanel;
     public FullDetailsPanel fullEmpPanel;
-    public LeavePanel leaveApp; 
+    public LeaveRequestPanel leaveApp;
     public TimePanel timeEmpPanel;
     
     public JPanel itApprovalPanel;
@@ -44,11 +44,19 @@ public class DashboardPanel extends JFrame {
     public JPanel leaveApprovalPanel;
     public JPanel payrollFinancePanel;
 
+    // UI Components for the Home Panel
+    private JTextField txtEmpNo, txtLastName, txtFirstName, txtPosition, txtSupervisor;
+    private JTextField txtBirthday, txtAddress, txtPhone, txtSss, txtPhilHealth, txtTin, txtPagibig;
+    private JLabel lblProfilePic;
+
+
+
     public DashboardPanel(EmployeeManagementService empService, AttendanceDAO attDao, UserLibrary auth, Employee user) {
-        this.employeeService = empService;
-        this.attendanceDao = attDao;
-        this.authService = auth;
-        this.currentUser = user; 
+    // 1. Assign your dependencies
+    this.employeeService = empService;
+    this.attendanceDao = attDao;
+    this.authService = auth;
+    this.currentUser = user; 
 
         this.userRole = user.getRole().name();
         this.userEmpNo = String.valueOf(user.getEmpNo());
@@ -56,57 +64,39 @@ public class DashboardPanel extends JFrame {
         this.userFirstname = user.getFirstName();
         this.userLastname = user.getLastName();
 
-        // Initialize Panels
+        // --- STEP 1: INITIALIZE ALL PANELS ---
+
+        
         this.personalInfoPanel = createHomePanel(); 
         this.addEmpPanel = new AddEmployeePanel(employeeService);
         this.fullEmpPanel = new FullDetailsPanel(employeeService, currentUser);
-        this.leaveApp = new LeavePanel();
-        this.timeEmpPanel = new TimePanel();
         
-        // Initialize the logic-heavy Database Panel
+this.leaveService = new LeaveService(employeeService.getEmployeeDao(), attendanceDao);
+this.leaveApp = new LeaveRequestPanel(leaveService, currentUser);
+
+
+        this.timeEmpPanel = new TimePanel(employeeService, currentUser);
         this.databasePanel = new EmployeeDatabase(employeeService, currentUser);
-        
-        // Placeholders
+
+        // Explicitly creating placeholders for the modules you'll build later
         this.itApprovalPanel = createPlaceholderPanel("IT Approval Module");
         this.itSupportPanel = createPlaceholderPanel("IT Support Ticket System");
         this.leaveApprovalPanel = createPlaceholderPanel("Manager Leave Approval");
         this.payrollFinancePanel = createPlaceholderPanel("Payroll & My Payslip");
 
-        // Frame Setup        
-        setTitle("MotorPH Dashboard");
+        // --- STEP 2: FRAME SETUP ---
+        setTitle("MotorPH Dashboard - " + userRole); 
         setDefaultCloseOperation(EXIT_ON_CLOSE);                                            
         setSize(1200, 800);
         setLocationRelativeTo(null);
         setLayout(new BorderLayout());
 
-        // Navigation Panel
-        JPanel navPanel = new JPanel();
-        navPanel.setBackground(new Color(128, 0, 0));
-        navPanel.setPreferredSize(new Dimension(220, getHeight()));
-        navPanel.setLayout(new BoxLayout(navPanel, BoxLayout.Y_AXIS));
-
-        JLabel adminTitle = new JLabel("MotorPH Admin");
-        adminTitle.setForeground(Color.WHITE);
-        adminTitle.setFont(new Font("Arial", Font.BOLD, 22));
-        adminTitle.setAlignmentX(Component.CENTER_ALIGNMENT);
-
-        JButton btnMyDetails = UIUtils.createNavButton("My Profile", Color.white, Color.white);
-        JButton btnPayslip = UIUtils.createNavButton("My Payslip", Color.white, Color.white);
-        JButton btnDatabase = UIUtils.createNavButton("Employee Database", Color.white, Color.white);
-        JButton btnTime = UIUtils.createNavButton("Attendance", Color.white, Color.white);
-        JButton btnLeaveReq = UIUtils.createNavButton("Leave Request", Color.white, Color.white);
-        JButton btnITApproval = UIUtils.createNavButton("IT Approval", Color.white, Color.white);
-        JButton btnITSupport = UIUtils.createNavButton("IT Support", Color.white, Color.white);
-        JButton btnLeaveApproval = UIUtils.createNavButton("Leave Approval", Color.white, Color.white);
-        JButton btnPayroll = UIUtils.createNavButton("Payroll & Finances", Color.white, Color.white);
-        JButton btnLogout = UIUtils.createNavButton("Log out", Color.white, Color.white);
-
+        // --- STEP 3: CARD PANEL SETUP ---
         cardLayout = new CardLayout();
         cardPanel = new JPanel(cardLayout);
         
-        // Registering Cards
         cardPanel.add(personalInfoPanel, "Home"); 
-        cardPanel.add(databasePanel, "Database"); // Logic focused database
+        cardPanel.add(databasePanel, "Database"); 
         cardPanel.add(addEmpPanel, "AddEmployee");
         cardPanel.add(fullEmpPanel, "FullDetails");
         cardPanel.add(leaveApp, "Leave");
@@ -116,47 +106,77 @@ public class DashboardPanel extends JFrame {
         cardPanel.add(leaveApprovalPanel, "Leave_Approval");
         cardPanel.add(payrollFinancePanel, "Payroll");
 
-        navPanel.add(Box.createVerticalStrut(30)); 
-        navPanel.add(adminTitle);
-        navPanel.add(Box.createVerticalStrut(30)); 
+        // --- STEP 4: NAVIGATION PANEL (MATCHING YOUR SCREENSHOT) ---
+        JPanel navPanel = new JPanel();
+        navPanel.setBackground(new Color(128, 0, 0));
+        navPanel.setPreferredSize(new Dimension(220, getHeight()));
+        navPanel.setLayout(new BoxLayout(navPanel, BoxLayout.Y_AXIS));
 
-        addNavComponent(navPanel, btnMyDetails);
-        addNavComponent(navPanel, btnPayslip);
+        JLabel adminTitle = new JLabel("MotorPH Admin");
+        adminTitle.setForeground(Color.WHITE);
+        adminTitle.setFont(new Font("Arial", Font.BOLD, 22));
+        adminTitle.setAlignmentX(Component.CENTER_ALIGNMENT);
+        adminTitle.setBorder(BorderFactory.createEmptyBorder(20, 0, 20, 0));
+
+        // Create buttons exactly as seen in your screenshot
+        JButton btnMyProfile = UIUtils.createNavButton("My Profile", Color.white, Color.white);
+        JButton btnMyPayslip = UIUtils.createNavButton("My Payslip", Color.white, Color.white);
+        JButton btnDatabase = UIUtils.createNavButton("Employee Database", Color.white, Color.white);
+        JButton btnAttendance = UIUtils.createNavButton("Attendance", Color.white, Color.white);
+        JButton btnLeaveRequest = UIUtils.createNavButton("Leave Request", Color.white, Color.white);
+        JButton btnITApproval = UIUtils.createNavButton("IT Approval", Color.white, Color.white);
+        JButton btnITSupport = UIUtils.createNavButton("IT Support", Color.white, Color.white);
+        JButton btnLeaveApproval = UIUtils.createNavButton("Leave Approval", Color.white, Color.white);
+        JButton btnPayrollFinances = UIUtils.createNavButton("Payroll & Finances", Color.white, Color.white);
+        JButton btnLogout = UIUtils.createNavButton("Log out", Color.white, Color.white);
+
+        navPanel.add(adminTitle);
+
+        // Adding components to nav bar
+        addNavComponent(navPanel, btnMyProfile);
+        addNavComponent(navPanel, btnMyPayslip);
         addNavComponent(navPanel, btnDatabase);
-        addNavComponent(navPanel, btnTime);
-        addNavComponent(navPanel, btnLeaveReq);
+        addNavComponent(navPanel, btnAttendance);
+        addNavComponent(navPanel, btnLeaveRequest);
         addNavComponent(navPanel, btnITApproval);
         addNavComponent(navPanel, btnITSupport);
         addNavComponent(navPanel, btnLeaveApproval);
-        addNavComponent(navPanel, btnPayroll);
+        addNavComponent(navPanel, btnPayrollFinances);
+        
         navPanel.add(Box.createVerticalGlue());
         addNavComponent(navPanel, btnLogout);
 
-        // --- Listeners ---
-        btnMyDetails.addActionListener(e -> switchPanel("Home"));
+        // --- STEP 5: LISTENERS ---
+        btnMyProfile.addActionListener(e -> switchPanel("Home"));
+        btnMyPayslip.addActionListener(e -> switchPanel("Payroll")); // Currently using the payroll placeholder
         
         btnDatabase.addActionListener(e -> { 
             if (databasePanel != null) {
-                databasePanel.refreshTable(); // Sync with CSV via Service/DAO
+                databasePanel.refreshTable(); 
             }
             switchPanel("Database"); 
         });
 
-        btnTime.addActionListener(e -> { 
+        btnAttendance.addActionListener(e -> { 
             timeEmpPanel.setLoggedIn(userLoggedIn, userLastname, userFirstname); 
             switchPanel("Time"); 
         });
-        
-        btnLeaveReq.addActionListener(e -> switchPanel("Leave"));
-        btnITApproval.addActionListener(e -> switchPanel("IT_Approval"));
+
+
+// The listener you asked for:
+btnLeaveRequest.addActionListener(e -> { 
+    if (leaveApp != null) {
+        leaveApp.refreshUI(); 
+    }
+    switchPanel("Leave"); 
+});       btnITApproval.addActionListener(e -> switchPanel("IT_Approval"));
         btnITSupport.addActionListener(e -> switchPanel("IT_Support"));
         btnLeaveApproval.addActionListener(e -> switchPanel("Leave_Approval"));
-        btnPayroll.addActionListener(e -> switchPanel("Payroll"));
+        btnPayrollFinances.addActionListener(e -> switchPanel("Payroll"));
         
         btnLogout.addActionListener(e -> { 
             dispose(); 
-           // Use this if you are NOT in the ui package
-new ui.LoginPanel(employeeService, attendanceDao, authService).setVisible(true);
+            new LoginPanel(employeeService, attendanceDao, authService).setVisible(true);
         });
 
         add(navPanel, BorderLayout.WEST);
@@ -175,12 +195,6 @@ new ui.LoginPanel(employeeService, attendanceDao, authService).setVisible(true);
         // KPI Row
         JPanel kpiRow = new JPanel(new GridLayout(1, 3, 20, 0));
         kpiRow.setOpaque(false);
-        
-
-        // --- NEW SEARCH BAR UI ---
-        JPanel searchPanel = new JPanel(new BorderLayout(10, 0));
-        searchPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 5, 10));
-
 
         java.util.List<model.Attendance> logs = attendanceDao.getAttendanceByEmployee(currentUser.getEmpNo());
         double totalHours = 0;
@@ -314,9 +328,7 @@ new ui.LoginPanel(employeeService, attendanceDao, authService).setVisible(true);
 
         try {
             ImageIcon icon = new ImageIcon(path);
-            int w = lblPhoto.getWidth() > 0 ? lblPhoto.getWidth() : 100;
-            int h = lblPhoto.getHeight() > 0 ? lblPhoto.getHeight() : 100;
-            Image img = icon.getImage().getScaledInstance(w, h, Image.SCALE_SMOOTH);
+            Image img = icon.getImage().getScaledInstance(100, 100, Image.SCALE_SMOOTH);
             lblPhoto.setIcon(new ImageIcon(img));
             lblPhoto.setText(""); 
         } catch (Exception e) {
@@ -340,9 +352,9 @@ new ui.LoginPanel(employeeService, attendanceDao, authService).setVisible(true);
 
     private void addNavComponent(JPanel panel, JButton button) {
         button.setAlignmentX(Component.CENTER_ALIGNMENT);
-        button.setMaximumSize(new Dimension(180, 40));
+        button.setMaximumSize(new Dimension(200, 40)); // Increased width slightly for longer text
         panel.add(button);
-        panel.add(Box.createVerticalStrut(10));
+        panel.add(Box.createVerticalStrut(5));
     }
 
     private void switchPanel(String cardName) { cardLayout.show(cardPanel, cardName); }
@@ -374,4 +386,8 @@ new ui.LoginPanel(employeeService, attendanceDao, authService).setVisible(true);
         panel.add(container);
         return field;
     }
+
+
+
+    
 }

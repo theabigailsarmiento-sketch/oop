@@ -12,17 +12,32 @@ public class Admin extends Employee implements IAdminOperations, ILeaveOperation
         super();
     }
 
-    public Admin(int id, String last, String first, LocalDate bday, double basic) {
-        super(id, last, first, bday); 
-        this.setBasicSalary(basic); 
-        this.setRole(Role.ADMIN); 
-    }
-
     // Constructor for full CSV data
-    public Admin(int empNo, String lastName, String firstName, LocalDate birthday, String address, String phone, String sss, String philhealth, String tin, String pagibig, String status, String position, String supervisor, double basicSalary, double riceSubsidy, double phoneAllowance, double clothingAllowance, double grossRate, double hourlyRate, Role role) {
-        super(empNo, lastName, firstName, birthday, address, phone, sss, philhealth, tin, pagibig, status, position, supervisor, basicSalary, riceSubsidy, phoneAllowance, clothingAllowance, grossRate, hourlyRate, role);
-    }
+public Admin(int empNo, String lastName, String firstName, LocalDate birthday, 
+             String address, String phone, String sss, String philhealth, 
+             String tin, String pagibig, String status, String position, 
+             String supervisor, double basicSalary, double riceSubsidy, 
+             double phoneAllowance, double clothingAllowance, double grossRate, 
+             double hourlyRate, Role role, String gender) { // <--- ADD String gender HERE
+    
+    // Pass gender to the super constructor
+    super(empNo, lastName, firstName, birthday, address, phone, sss, 
+          philhealth, tin, pagibig, status, position, supervisor, 
+          basicSalary, riceSubsidy, phoneAllowance, clothingAllowance, 
+          grossRate, hourlyRate, role, gender); 
+}
 
+
+// Add this 6-parameter constructor
+public Admin(int id, String last, String first, LocalDate bday, double basic, String gender) {
+    // 1. Call the basic super constructor
+    super(id, last, first, bday); 
+    
+    // 2. Set the specific fields
+    this.setBasicSalary(basic); 
+    this.setGender(gender);
+    this.setRole(Role.ADMIN); 
+}
     // --- Specialized Computation ---
     @Override
     public double calculateSahod() {

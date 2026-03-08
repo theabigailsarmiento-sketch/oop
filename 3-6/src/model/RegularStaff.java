@@ -18,17 +18,20 @@ public class RegularStaff extends Employee {
     }
 
     // FIXED: Added 'Role role' parameter to match the 20-parameter Employee constructor
-    public RegularStaff(int empNo, String lastName, String firstName, LocalDate birthday, 
-                        String address, String phone, String sss, String philhealth, 
-                        String tin, String pagibig, String status, String position, 
-                        String supervisor, double basicSalary, double riceSubsidy, 
-                        double phoneAllowance, double clothingAllowance, 
-                        double grossRate, double hourlyRate, Role role) {
-        
-        super(empNo, lastName, firstName, birthday, address, phone, sss, philhealth, 
-              tin, pagibig, status, position, supervisor, basicSalary, riceSubsidy, 
-              phoneAllowance, clothingAllowance, grossRate, hourlyRate, role);
-    }
+    // Constructor for full CSV data
+public RegularStaff(int empNo, String lastName, String firstName, LocalDate birthday, 
+             String address, String phone, String sss, String philhealth, 
+             String tin, String pagibig, String status, String position, 
+             String supervisor, double basicSalary, double riceSubsidy, 
+             double phoneAllowance, double clothingAllowance, double grossRate, 
+             double hourlyRate, Role role, String gender) { // <--- ADD String gender HERE
+    
+    // Pass gender to the super constructor
+    super(empNo, lastName, firstName, birthday, address, phone, sss, 
+          philhealth, tin, pagibig, status, position, supervisor, 
+          basicSalary, riceSubsidy, phoneAllowance, clothingAllowance, 
+          grossRate, hourlyRate, role, gender); 
+}
 
     // --- PAYROLL LOGIC ---
 

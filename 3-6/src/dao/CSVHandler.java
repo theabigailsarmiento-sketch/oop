@@ -33,32 +33,68 @@ private void loadAllIntoCache() {
     employeeCache.clear();
     usernameCache.clear();
 
+    // 1. Load Main Employee Data
     try (BufferedReader br = new BufferedReader(new FileReader(EMPLOYEE_DATA_CSV))) {
-        br.readLine(); 
+        br.readLine(); // Skip Header
         String line;
         while ((line = br.readLine()) != null) {
             if (line.trim().isEmpty()) continue; 
             
-            // FIX: Replace CSVUtils.splitCSVLine(line) with the regex split
-            String[] data = line.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)", -1);
+            // Regex split to handle addresses with commas inside quotes
+            String[] data = line.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)");
             
-            if (data.length > 0 && data[0] != null) data[0] = data[0].replace("\uFEFF", "").trim();
+            // Cleanup ID (handling BOM and spaces)
+            if (data.length > 0 && data[0] != null) {
+                data[0] = data[0].replace("\uFEFF", "").trim();
+            }
+            
+            // Basic data integrity check
             if (data.length < 19) continue;
             
+            // --- FLEXIBLE DATE PARSING (Integrated Fix) ---
+            String bdayStr = (data[3] != null) ? data[3].trim() : "";
             LocalDate birthday = null;
-            String bdayStr = CSVUtils.clean(data[3]);
-            try { if (!bdayStr.isEmpty()) birthday = LocalDate.parse(bdayStr, dateFormatter); } catch (Exception e) {}
 
+            if (!bdayStr.isEmpty()) {
+                try {
+                    if (bdayStr.contains("-")) {
+                        // Handles ISO format: 1987-10-21
+                        birthday = LocalDate.parse(bdayStr); 
+                    } else if (bdayStr.contains("/")) {
+                        // Handles CSV format: 10/21/1987 (MM/dd/yyyy)
+                        birthday = LocalDate.parse(bdayStr, DateTimeFormatter.ofPattern("MM/dd/yyyy"));
+                    }
+                } catch (Exception e) {
+                    System.err.println("Birthday parse error for ID " + data[0] + ": " + bdayStr);
+                    birthday = LocalDate.of(1900, 1, 1); // Default fallback to prevent crash
+                }
+            }
+
+            // Map the base data using the parsed birthday
             Employee emp = mapToEmployee(data, birthday);
-            if (emp != null) employeeCache.put(emp.getEmpNo(), emp);
+            
+            if (emp != null) {
+                // --- GENDER SAFETY CHECK (Index 20) ---
+                if (data.length > 20) {
+                    emp.setGender(data[20].trim());
+                } else {
+                    emp.setGender("Not Set"); 
+                }
+                
+                employeeCache.put(emp.getEmpNo(), emp);
+            }
         }
-    } catch (IOException e) { System.err.println("DAO Error: " + e.getMessage()); }
-    // 2. Load Login & Upgrade Roles (EmployeeLogin.csv)
+    } catch (IOException e) { 
+        System.err.println("DAO Error: " + e.getMessage()); 
+    }
+
+    // 2. Load Login & Upgrade Roles
     try (BufferedReader br = new BufferedReader(new FileReader(LOGIN_DATA_CSV))) {
-        br.readLine();
+        br.readLine(); // Skip Header
         String line;
         while ((line = br.readLine()) != null) {
-            String[] loginData = CSVUtils.splitCSVLine(line);
+            // Using your simplified split for logins
+            String[] loginData = line.split(","); 
             if (loginData.length >= 6) {
                 try {
                     int id = Integer.parseInt(loginData[0].replace("\uFEFF", "").trim());
@@ -66,30 +102,33 @@ private void loadAllIntoCache() {
                     
                     if (baseEmp != null) {
                         String roleStr = loginData[5].trim();
-                        // CRITICAL: Upgrade the role but KEEP the data
+                        // Upgrade the role but KEEP the existing data
                         Employee upgraded = upgradeEmployeeRole(baseEmp, roleStr);
                         upgraded.setPassword(loginData[4].trim());
                         
-                        // Save back to DAO Cache
+                        // Re-sync with caches
                         employeeCache.put(id, upgraded);
                         usernameCache.put(loginData[1].trim().toLowerCase(), upgraded);
                     }
-                } catch (Exception e) {}
+                } catch (Exception e) {
+                    // Skip malformed login lines silently
+                }
             }
         }
-    } catch (IOException e) { System.err.println("Login Error: " + e.getMessage()); }
+    } catch (IOException e) { 
+        System.err.println("Login Error: " + e.getMessage()); 
+    }
 }
-
 private Employee mapToEmployee(String[] data, LocalDate birthday) {
     try {
+        // 1. Basic ID and Salary Parsing
         int id = Integer.parseInt(CSVUtils.clean(data[0])); 
-        
-        // --- FIXED INDICES TO MATCH CSV ---
-        // Column 13: Basic Salary
         double basicSalary = CSVUtils.parseCurrency(data[13]); 
         
+        // 2. Initialize the Employee object
         Employee emp = new RegularStaff(id, CSVUtils.clean(data[1]), CSVUtils.clean(data[2]), birthday, basicSalary);
         
+        // 3. Standard Information
         emp.setAddress(CSVUtils.clean(data[4]));
         emp.setPhone(CSVUtils.clean(data[5]));
         emp.setSss(CSVUtils.clean(data[6]));
@@ -97,27 +136,44 @@ private Employee mapToEmployee(String[] data, LocalDate birthday) {
         emp.setTin(CSVUtils.clean(data[8]));
         emp.setPagibig(CSVUtils.clean(data[9]));
         emp.setStatus(CSVUtils.clean(data[10]));
-        emp.setPosition(CSVUtils.clean(data[11]));    // Column 11: Position
-        emp.setSupervisor(CSVUtils.clean(data[12]));  // Column 12: Supervisor
-        // Explicitly set it again to be safe
-        emp.setBasicSalary(basicSalary);
+        emp.setPosition(CSVUtils.clean(data[11]));    
+        emp.setSupervisor(CSVUtils.clean(data[12]));  
         
-        // Financial Allowances
-        emp.setRiceSubsidy(CSVUtils.parseCurrency(data[14]));      // Column 14
-        emp.setPhoneAllowance(CSVUtils.parseCurrency(data[15]));   // Column 15
-        emp.setClothingAllowance(CSVUtils.parseCurrency(data[16]));// Column 16
+        // 4. Financial Allowances
+        emp.setRiceSubsidy(CSVUtils.parseCurrency(data[14]));      
+        emp.setPhoneAllowance(CSVUtils.parseCurrency(data[15]));   
+        emp.setClothingAllowance(CSVUtils.parseCurrency(data[16]));
        
-        // Rates
-        emp.setGrossRate(CSVUtils.parseCurrency(data[17]));        // Column 17
-        emp.setHourlyRate(CSVUtils.parseCurrency(data[18]));       // Column 18
+        // 5. Rates
+        emp.setGrossRate(CSVUtils.parseCurrency(data[17]));        
+        emp.setHourlyRate(CSVUtils.parseCurrency(data[18]));       
+
+        // 6. Handle Role (Index 19)
+        if (data.length > 19) {
+            try { 
+                emp.setRole(Role.valueOf(data[19].toUpperCase().trim())); 
+            } catch(Exception e) {
+                // Default role if parsing fails
+                emp.setRole(Role.REGULAR_STAFF); 
+            }
+        }
+
+        // 7. Handle Gender (Index 20)
+        // If length is 20, max index is 19. We need length to be at least 21 to have index 20.
+        if (data.length > 20) {
+            String genderVal = CSVUtils.clean(data[20]);
+            emp.setGender(genderVal.isEmpty() ? "Not Set" : genderVal);
+        } else {
+            emp.setGender("Not Set");
+        }
 
         return emp;
+        
     } catch (Exception e) { 
-        System.err.println("DAO Mapping error for ID " + data[0] + ": " + e.getMessage());
+        System.err.println("DAO Mapping error for Employee ID " + (data.length > 0 ? data[0] : "Unknown") + ": " + e.getMessage());
         return null; 
     }
 }
-
 private void copyFinancials(Employee from, Employee to) {
     // Ensure all data is transferred to the new specialized role object
     to.setBasicSalary(from.getBasicSalary());
@@ -126,6 +182,7 @@ private void copyFinancials(Employee from, Employee to) {
     to.setClothingAllowance(from.getClothingAllowance());
     to.setGrossRate(from.getGrossRate());
     to.setHourlyRate(from.getHourlyRate());
+    to.setGender(from.getGender());
     to.setAddress(from.getAddress());
     to.setPhone(from.getPhone());
     to.setSss(from.getSss());
@@ -136,20 +193,26 @@ private void copyFinancials(Employee from, Employee to) {
     to.setPosition(from.getPosition());
     to.setSupervisor(from.getSupervisor());
 }
-    private Employee upgradeEmployeeRole(Employee o, String roleName) {
-        Role role = Role.fromString(roleName);
-        Employee upgraded = switch (role) {
-            case ADMIN -> new Admin(o.getEmpNo(), o.getLastName(), o.getFirstName(), o.getBirthday(), o.getBasicSalary());
-            case HR_STAFF -> new HRStaff(o.getEmpNo(), o.getLastName(), o.getFirstName(), o.getBirthday(), o.getBasicSalary());
-            case IT_STAFF -> new ITStaff(o.getEmpNo(), o.getLastName(), o.getFirstName(), o.getBirthday(), o.getBasicSalary());
-            case ACCOUNTING -> new AccountingStaff(o.getEmpNo(), o.getLastName(), o.getFirstName(), o.getBirthday(), o.getBasicSalary());
-            default -> o;
-        };
-        upgraded.setRole(role);
-        copyFinancials(o, upgraded);
-        return upgraded;
-    }
 
+private Employee upgradeEmployeeRole(Employee o, String roleName) {
+    Role role = Role.fromString(roleName);
+    
+    Employee upgraded = switch (role) {
+        // ADD 'o.getGender()' as the 6th parameter here:
+        case ADMIN -> new Admin(o.getEmpNo(), o.getLastName(), o.getFirstName(), o.getBirthday(), o.getBasicSalary(), o.getGender());
+        
+        // Do the same for these (assuming they have the 6-param constructor too):
+        case HR_STAFF -> new HRStaff(o.getEmpNo(), o.getLastName(), o.getFirstName(), o.getBirthday(), o.getBasicSalary(), o.getGender());
+        case IT_STAFF -> new ITStaff(o.getEmpNo(), o.getLastName(), o.getFirstName(), o.getBirthday(), o.getBasicSalary(), o.getGender());
+        case ACCOUNTING -> new AccountingStaff(o.getEmpNo(), o.getLastName(), o.getFirstName(), o.getBirthday(), o.getBasicSalary(), o.getGender());
+        
+        default -> o;
+    };
+
+    upgraded.setRole(role);
+    copyFinancials(o, upgraded);
+    return upgraded;
+}
     
     @Override public List<Employee> getAll() { return new ArrayList<>(employeeCache.values()); }
     @Override public Employee findById(int id) { return employeeCache.get(id); }
@@ -166,35 +229,65 @@ private void copyFinancials(Employee from, Employee to) {
         return saveAllToCSV(); 
     }
 
-    private boolean saveAllToCSV() {
-        try (PrintWriter writer = new PrintWriter(new BufferedWriter(new FileWriter(EMPLOYEE_DATA_CSV)))) {
-            writer.println("Employee #,Last Name,First Name,Birthday,Address,Phone #,SSS #,Philhealth #,TIN #,Pag-ibig #,Status,Position,Immediate Supervisor,Basic Salary,Rice Subsidy,Phone Allowance,Clothing Allowance,Gross Semi-monthly Rate,Hourly Rate,Role");
-            for (Employee e : employeeCache.values()) {
-                String bdayStr = (e.getBirthday() != null) ? e.getBirthday().format(DateTimeFormatter.ofPattern("MM/dd/yyyy")) : "";
-                String addr = (e.getAddress() != null) ? e.getAddress() : "";
-                String superv = (e.getSupervisor() != null) ? e.getSupervisor() : "N/A";
-                
-                String safeAddress = addr.contains(",") ? "\"" + addr + "\"" : addr;
-                String safeSupervisor = superv.contains(",") ? "\"" + superv + "\"" : superv;
-                
-                writer.printf("%d,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%s%n",
-                    e.getEmpNo(), e.getLastName(), e.getFirstName(), bdayStr,
-                    safeAddress, e.getPhone(), e.getSss(), e.getPhilhealth(), e.getTin(), e.getPagibig(),
-                    e.getStatus(), e.getPosition(), safeSupervisor, 
-                    e.getBasicSalary(), e.getRiceSubsidy(), e.getPhoneAllowance(), 
-                    e.getClothingAllowance(), e.getGrossRate(), e.getHourlyRate(), e.getRole());
-            }
-            return true;
-        } catch (IOException e) { return false; }
-    }
+private boolean saveAllToCSV() {
+    try (PrintWriter writer = new PrintWriter(new BufferedWriter(new FileWriter(EMPLOYEE_DATA_CSV)))) {
+        // 1. Write the Header (Ensuring "Gender" is the 21st label)
+        writer.println("Employee #,Last Name,First Name,Birthday,Address,Phone #,SSS #,Philhealth #,TIN #,Pag-ibig #,Status,Position,Immediate Supervisor,Basic Salary,Rice Subsidy,Phone Allowance,Clothing Allowance,Gross Semi-monthly Rate,Hourly Rate,Role,Gender");
+        
+        for (Employee e : employeeCache.values()) {
+            // Null-safe checks
+            String bdayStr = (e.getBirthday() != null) ? e.getBirthday().format(DateTimeFormatter.ofPattern("MM/dd/yyyy")) : "";
+            String addr = (e.getAddress() != null) ? e.getAddress() : "";
+            String superv = (e.getSupervisor() != null) ? e.getSupervisor() : "N/A";
+            
+            // Explicitly handle the Gender fallback
+            String gender = (e.getGender() != null && !e.getGender().trim().isEmpty()) ? e.getGender() : "Not Set";
+            
+            // Handle commas in text fields
+            String safeAddress = addr.contains(",") ? "\"" + addr + "\"" : addr;
+            String safeSupervisor = superv.contains(",") ? "\"" + superv + "\"" : superv;
+            
+            // Get Role name safely
+            String roleStr = (e.getRole() != null) ? e.getRole().name() : "REGULAR_STAFF";
 
+            // 2. WRITE LINE
+            // This format string uses 21 placeholders.
+            writer.printf("%d,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%s,%s%n",
+                e.getEmpNo(),           // 1
+                e.getLastName(),        // 2
+                e.getFirstName(),       // 3
+                bdayStr,                // 4
+                safeAddress,            // 5
+                e.getPhone(),           // 6
+                e.getSss(),             // 7
+                e.getPhilhealth(),      // 8
+                e.getTin(),             // 9
+                e.getPagibig(),         // 10
+                e.getStatus(),          // 11
+                e.getPosition(),        // 12
+                safeSupervisor,         // 13
+                e.getBasicSalary(),     // 14
+                e.getRiceSubsidy(),     // 15
+                e.getPhoneAllowance(),  // 16
+                e.getClothingAllowance(),// 17
+                e.getGrossRate(),       // 18
+                e.getHourlyRate(),      // 19
+                roleStr,                // 20
+                gender                  // 21
+            );
+        }
+        writer.flush(); // Ensure everything is written
+        return true;
+    } catch (IOException e) { 
+        System.err.println("Error saving CSV: " + e.getMessage());
+        return false; 
+    }
+}
     public Object[][] getAttendanceByMonth(int empNo, String month) {
     return new Object[0][3]; 
 }
 
-public void recordAttendance(int empNo, String status) {
-    System.out.println("Recording " + status + " for Employee: " + empNo);
-}
+
 @Override
 public Employee getById(int id) {
     // This assumes you already have a method named findById 

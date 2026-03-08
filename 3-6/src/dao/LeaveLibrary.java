@@ -9,31 +9,43 @@ import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.List;
 
+
+
 public class LeaveLibrary {
-    private static final String LEAVE_FILE = "resources/MotorPH_LeaveRequests.csv";
+   private static final String LEAVE_FILE = "resources/MotorPH_LeaveRequests.csv";
 
     public List<String[]> fetchAllLeaves() {
-    List<String[]> data = new ArrayList<>();
-    try (BufferedReader br = new BufferedReader(new FileReader(LEAVE_FILE))) {
-        br.readLine(); // Skip the header row
-        String line;
-        while ((line = br.readLine()) != null) {
-            if (line.trim().isEmpty()) continue;
-            // Use regex to split by comma while respecting quotes in the "Reason" column
-            String[] row = line.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)");
-            data.add(row);
+        List<String[]> data = new ArrayList<>();
+        
+        try (BufferedReader br = new BufferedReader(new FileReader(LEAVE_FILE))) {
+            String header = br.readLine(); // Skip header
+            String line;
+            
+            while ((line = br.readLine()) != null) {
+                if (line.trim().isEmpty()) continue;
+                
+                // Regex to split by comma but ignore commas inside double quotes
+                String[] row = line.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)");
+                
+                // Clean up quotes from the reason column if they exist
+                for (int i = 0; i < row.length; i++) {
+                    row[i] = row[i].replace("\"", "").trim();
+                }
+                
+                data.add(row);
+            }
+        } catch (IOException e) { 
+            System.err.println("File Error: " + e.getMessage()); 
         }
-    } catch (IOException e) { 
-        System.err.println("File Error: " + e.getMessage()); 
+        return data;
     }
-    return data;
-}
 
 public boolean updateLeaveStatus(String requestId, String newStatus) {
-    List<String[]> allData = fetchAllLeaves(); // Gets current 9-column rows
+    List<String[]> allData = fetchAllLeaves(); 
     boolean updated = false;
 
     try (PrintWriter pw = new PrintWriter(new FileWriter(LEAVE_FILE))) {
+        // Write Header
         pw.println("RequestID,EmployeeID,LastName,FirstName,Type,Start,End,Reason,Status");
 
         for (String[] row : allData) {
@@ -41,6 +53,12 @@ public boolean updateLeaveStatus(String requestId, String newStatus) {
                 row[8] = newStatus; 
                 updated = true;
             }
+            
+            // FIX: Ensure the "Reason" (index 7) is wrapped in quotes if it contains commas
+            if (row[7].contains(",")) {
+                row[7] = "\"" + row[7] + "\"";
+            }
+            
             pw.println(String.join(",", row));
         }
     } catch (IOException e) {
@@ -48,7 +66,6 @@ public boolean updateLeaveStatus(String requestId, String newStatus) {
     }
     return updated;
 }
-
 
 
 

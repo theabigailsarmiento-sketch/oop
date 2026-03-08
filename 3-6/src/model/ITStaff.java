@@ -15,25 +15,28 @@ public class ITStaff extends Employee implements ISystemOperations {
     }
 
     // FIXED: Added Role.IT_STAFF to the super call and setRole
-    public ITStaff(int id, String last, String first, LocalDate bday, double basic) {
-        super(id, last, first, bday);
-        this.basicSalary = basic;
-        this.setRole(Role.IT_STAFF); 
-    }
+ public ITStaff(int id, String last, String first, LocalDate bday, double basic, String gender) {
+    super(id, last, first, bday); 
+    this.setBasicSalary(basic); 
+    this.setGender(gender);
+    this.setRole(Role.IT_STAFF); 
+}
 
     // FIXED: Added 'Role role' parameter to match the large Employee constructor
-    public ITStaff(int empNo, String lastName, String firstName, LocalDate birthday, 
-                   String address, String phone, String sss, String philhealth, 
-                   String tin, String pagibig, String status, String position, 
-                   String supervisor, double basicSalary, double riceSubsidy, 
-                   double phoneAllowance, double clothingAllowance, 
-                   double grossRate, double hourlyRate, Role role) {
-        
-        super(empNo, lastName, firstName, birthday, address, phone, sss, philhealth, 
-              tin, pagibig, status, position, supervisor, basicSalary, riceSubsidy, 
-              phoneAllowance, clothingAllowance, grossRate, hourlyRate, role);
-    }
-
+    // Constructor for full CSV data
+public ITStaff(int empNo, String lastName, String firstName, LocalDate birthday, 
+             String address, String phone, String sss, String philhealth, 
+             String tin, String pagibig, String status, String position, 
+             String supervisor, double basicSalary, double riceSubsidy, 
+             double phoneAllowance, double clothingAllowance, double grossRate, 
+             double hourlyRate, Role role, String gender) { // <--- ADD String gender HERE
+    
+    // Pass gender to the super constructor
+    super(empNo, lastName, firstName, birthday, address, phone, sss, 
+          philhealth, tin, pagibig, status, position, supervisor, 
+          basicSalary, riceSubsidy, phoneAllowance, clothingAllowance, 
+          grossRate, hourlyRate, role, gender); 
+}
     @Override
     public Role getRole() {
         return Role.IT_STAFF; 

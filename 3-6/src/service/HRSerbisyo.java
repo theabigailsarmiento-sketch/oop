@@ -91,4 +91,14 @@ public List<LeaveRequest> getAllLeaveRequestsList() {
 }
 
 
+// Add this to HRSerbisyo.java
+public Object[][] getLeaveHistory(int empNo) {
+    List<String[]> allLeaves = leaveLibrary.fetchAllLeaves();
+    // Filter the list so only rows where row[1] (Emp ID) matches empNo are returned
+    return allLeaves.stream()
+        .filter(row -> row.length >= 2 && row[1].equals(String.valueOf(empNo)))
+        .toArray(Object[][]::new);
+}
+
+
 }

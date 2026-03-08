@@ -14,11 +14,8 @@ public static String[] splitCSVLine(String line) {
         return (s == null) ? "" : s.trim().replace("\"", "");
     }
 
-    public static double parseCurrency(String s) {
-        try {
-            return Double.parseDouble(s.replace("\"", "").replace(",", ""));
-        } catch (Exception e) {
-            return 0.0;
-        }
-    }
+   public static double parseCurrency(String val) {
+    if (val == null || val.trim().isEmpty() || val.equalsIgnoreCase("N/A")) return 0.0;
+    return Double.parseDouble(val.replace(",", "").trim());
+}
 }

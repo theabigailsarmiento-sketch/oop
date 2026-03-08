@@ -7,53 +7,86 @@ import java.util.*;
 import model.Attendance;
 
 public class AttendanceCSVHandler implements AttendanceDAO {
+    
     private static final String FILE_PATH = "resources/MotorPH_AttendanceRecord.csv";
-    private final DateTimeFormatter dateFormat = DateTimeFormatter.ofPattern("M/d/yyyy");
+    
+    // FIXED: Your logs show 12/25/2024, which is MM/dd/yyyy
+    private final DateTimeFormatter fileDateFormat = DateTimeFormatter.ofPattern("MM/dd/yyyy");
+    private final DateTimeFormatter dateFormat = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private final DateTimeFormatter timeFormat = DateTimeFormatter.ofPattern("H:mm");
 
     @Override
     public List<Attendance> getAttendanceByEmployee(int empNo) {
-        List<Attendance> attendanceList = new ArrayList<>();
+        List<Attendance> list = new ArrayList<>();
         
         try (BufferedReader br = new BufferedReader(new FileReader(FILE_PATH))) {
-            br.readLine(); // Skip header
             String line;
             while ((line = br.readLine()) != null) {
-                // FIXED: Using shared utility logic to handle quotes safely
-                String[] parts = CSVUtils.splitCSVLine(line);
+                if (line.trim().isEmpty()) continue;
                 
-                if (parts.length >= 6 && Integer.parseInt(parts[0].trim()) == empNo) {
-                    try {
-                        LocalDate date = LocalDate.parse(parts[3].trim(), dateFormat);
-                        LocalTime logIn = LocalTime.parse(parts[4].trim(), timeFormat);
-                        
-                        // If logOut is empty, default to logIn or null
-                        String logOutStr = parts[5].trim();
-                        LocalTime logOut = logOutStr.isEmpty() ? null : LocalTime.parse(logOutStr, timeFormat);
+                String[] p = line.split(",");
+                // Skip header or short lines
+                if (p.length < 6 || p[0].trim().startsWith("Employee")) continue;
 
-                        attendanceList.add(new Attendance(empNo, date, logIn, logOut));
-                    } catch (Exception e) {
-                        // Skip malformed rows
+                try {
+                    // Remove BOM or hidden spaces
+                    int id = Integer.parseInt(p[0].replace("\uFEFF", "").trim());
+                    
+                    if (id == empNo) {
+                        // 1. Parse Date using the MM/dd/yyyy formatter (fileDateFormat)
+                        LocalDate date = LocalDate.parse(p[3].trim(), fileDateFormat);
+                        
+                        // 2. Parse Times safely using the helper method below
+                        LocalTime timeIn = parseTime(p[4].trim());
+                        LocalTime timeOut = parseTime(p[5].trim());
+
+                        // 3. Create the object using your specific constructor
+                        Attendance a = new Attendance(id, date, timeIn, timeOut);
+                        list.add(a);
                     }
+                } catch (Exception e) {
+                    // This will no longer skip lines for dates like 12/25/2024
+                    System.out.println("Skipping bad line: " + line + " Error: " + e.getMessage());
                 }
             }
-        } catch (IOException e) {
-            System.err.println("Error reading attendance: " + e.getMessage());
+        } catch (IOException e) { 
+            e.printStackTrace(); 
         }
-        return attendanceList;
+        return list;
+    }
+
+    /**
+     * Helper method to handle "N/A", "00:00", or single-digit hours like "2:24"
+     */
+    private LocalTime parseTime(String timeStr) {
+        if (timeStr == null || timeStr.equalsIgnoreCase("N/A") || timeStr.equals("00:00") || timeStr.isEmpty()) {
+            return null; 
+        }
+        try {
+            // "H:mm" handles both "2:24" and "14:24"
+            return LocalTime.parse(timeStr, timeFormat);
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     @Override
-    public Object[][] getAttendanceByMonth(int empNo, String month) {
+    public Object[][] getAttendanceByMonth(int empNo, String month, String year) {
         List<Attendance> allLogs = getAttendanceByEmployee(empNo);
         List<Object[]> filteredRows = new ArrayList<>();
 
         for (Attendance a : allLogs) {
-            String logMonth = a.getDate().getMonth().name(); // e.g., "JUNE"
+            // Get the month name (e.g., MARCH) and year
+            String logMonth = a.getDate().getMonth().name(); 
+            String logYear = String.valueOf(a.getDate().getYear());
             
-            if (month.equalsIgnoreCase("All") || logMonth.equalsIgnoreCase(month)) {
+            // LOGIC: If month is "All", skip month check. If year is "All", skip year check.
+            boolean monthMatch = month.equalsIgnoreCase("All") || logMonth.equalsIgnoreCase(month);
+            boolean yearMatch = year.equalsIgnoreCase("All") || logYear.equals(year);
+
+            if (monthMatch && yearMatch) {
                 filteredRows.add(new Object[]{
-                    a.getDate().format(DateTimeFormatter.ofPattern("MM/dd/yyyy")),
+                    a.getDate().format(dateFormat), // Displays to UI as dd/MM/yyyy
                     a.getTimeIn() != null ? a.getTimeIn().toString() : "N/A",
                     a.getTimeOut() != null ? a.getTimeOut().toString() : "N/A"
                 });
@@ -63,10 +96,51 @@ public class AttendanceCSVHandler implements AttendanceDAO {
     }
 
     @Override
-    public void recordAttendance(int empNo, String type) {
-        // Implementation for writing to CSV goes here
-        // 1. Get current date and time
-        // 2. Append a new row to MotorPH_AttendanceRecord.csv
-        System.out.println("DEBUG: Recording " + type + " for Employee #" + empNo);
+    public void recordAttendance(int empNo, String lastName, String firstName, String type) {
+        File file = new File(FILE_PATH);
+        List<String> lines = new ArrayList<>();
+        
+        // Use MM/dd/yyyy to match the existing file data format
+        String todayStr = LocalDate.now().format(fileDateFormat);
+        String timeStr = LocalTime.now().format(timeFormat);
+        boolean foundToday = false;
+
+        // 1. READ and check for today's record
+        try (BufferedReader br = new BufferedReader(new FileReader(file))) {
+            String line;
+            while ((line = br.readLine()) != null) {
+                if (line.trim().isEmpty()) continue;
+                
+                // Keep the header
+                if (line.startsWith("Employee #")) {
+                    lines.add(line);
+                    continue;
+                }
+
+                String[] parts = line.split(",");
+                // parts[0] is ID, parts[3] is Date
+                if (parts.length >= 4 && parts[0].replace("\uFEFF", "").trim().equals(String.valueOf(empNo)) 
+                    && parts[3].trim().equals(todayStr)) {
+                    
+                    foundToday = true;
+                    if (type.equalsIgnoreCase("Check-out")) {
+                        // Update only Log Out (parts[5]), keep Log In (parts[4])
+                        line = parts[0] + "," + parts[1] + "," + parts[2] + "," + parts[3] + "," + parts[4] + "," + timeStr;
+                    }
+                }
+                lines.add(line);
+            }
+        } catch (IOException e) { e.printStackTrace(); }
+
+        // 2. Add NEW Check-in if not found
+        if (type.equalsIgnoreCase("Check-in") && !foundToday) {
+            lines.add(empNo + "," + lastName + "," + firstName + "," + todayStr + "," + timeStr + ",N/A");
+        }
+
+        // 3. WRITE back to file
+        try (PrintWriter pw = new PrintWriter(new BufferedWriter(new FileWriter(file, false)))) {
+            for (String l : lines) pw.println(l);
+            pw.flush();
+        } catch (IOException e) { e.printStackTrace(); }
     }
 }

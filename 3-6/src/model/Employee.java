@@ -32,6 +32,8 @@ public abstract class Employee implements IAuthenticatable, IPayrollCalculations
     private double grossSemiMonthlyRate;
     private String photoPath;
 
+    private String gender; // New Field
+
     private Role role;
     protected List<LeaveRequest> leaveRequests = new ArrayList<>();
 
@@ -54,7 +56,7 @@ public abstract class Employee implements IAuthenticatable, IPayrollCalculations
                     String tin, String pagibig, String status, String position, 
                     String supervisor, double basicSalary, double riceSubsidy, 
                     double phoneAllowance, double clothingAllowance, 
-                    double grossRate, double hourlyRate, Role role) {
+                    double grossRate, double hourlyRate, Role role, String gender) {
         this.empNo = empNo;
         this.lastName = lastName;
         this.firstName = firstName;
@@ -76,17 +78,38 @@ public abstract class Employee implements IAuthenticatable, IPayrollCalculations
         this.hourlyRate = hourlyRate;
         this.grossSemiMonthlyRate = grossRate / 2;
         this.role = role;
+        this.gender = gender;
+
+        
     }
 
     // Inside your Employee.java (Parent Class)
    // Inside model/Employee.java
-    public String toCSVString() {
-    return String.format("%d,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f",
-        this.getEmpNo(), this.getLastName(), this.getFirstName(), this.getBirthday(),
-        this.getAddress(), this.getPhone(), this.getSss(), this.getPhilhealth(),
-        this.getTin(), this.getPagibig(), this.getStatus(), this.getPosition(),
-        this.getBasicSalary(), this.getRiceSubsidy(), this.getPhoneAllowance(),
-        this.getClothingAllowance(), this.getGrossRate(), this.getHourlyRate());
+   public String toCSVString() {
+    // There are 21 placeholders here to match your 21 columns
+    return String.format("%d,%s,%s,%s,\"%s\",%s,%s,%s,%s,%s,%s,\"%s\",%s,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%s,%s",
+        this.getEmpNo(),             // 0: Employee #
+        this.getLastName(),          // 1: Last Name
+        this.getFirstName(),         // 2: First Name
+        this.getBirthday(),          // 3: Birthday
+        this.getAddress(),           // 4: Address
+        this.getPhone(),             // 5: Phone #
+        this.getSss(),               // 6: SSS #
+        this.getPhilhealth(),        // 7: Philhealth #
+        this.getTin(),               // 8: TIN #
+        this.getPagibig(),           // 9: Pag-ibig #
+        this.getStatus(),            // 10: Status
+        this.getPosition(),          // 11: Position
+        this.getSupervisor(),        // 12: Immediate Supervisor
+        this.getBasicSalary(),       // 13: Basic Salary
+        this.getRiceSubsidy(),       // 14: Rice Subsidy
+        this.getPhoneAllowance(),    // 15: Phone Allowance
+        this.getClothingAllowance(), // 16: Clothing Allowance
+        this.getGrossRate(),         // 17: Gross Semi-monthly Rate
+        this.getHourlyRate(),        // 18: Hourly Rate
+        this.getRole(),              // 19: Role
+        this.getGender()             // 20: Gender (The fix!)
+    );
 }
 
     // --- Getters ---
@@ -115,6 +138,8 @@ public abstract class Employee implements IAuthenticatable, IPayrollCalculations
     public double getGrossSemiMonthlyRate() { return this.grossSemiMonthlyRate; }
     public String getPhotoPath() { return this.photoPath; }
     public String getPassword() { return this.password; }
+
+    public String getGender() { return gender; }
     
     @Override
     public Role getRole() { return this.role; }
@@ -143,6 +168,10 @@ public abstract class Employee implements IAuthenticatable, IPayrollCalculations
     public void setPhotoPath(String photoPath) { this.photoPath = photoPath; }
     public void setPassword(String password) { this.password = password; }
     public final void setRole(Role role) { this.role = role; }
+
+    
+
+    public void setGender(String gender) { this.gender = gender; }
     
     // --- IAuthenticatable Implementation ---
 

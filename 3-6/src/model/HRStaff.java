@@ -8,25 +8,34 @@ public class HRStaff extends Employee implements IHROperations, ILeaveOperations
     public HRStaff() { super(); }
 
     // Full constructor for CSV/Database loading
-    public HRStaff(int empNo, String lastName, String firstName, LocalDate birthday, 
-                   String address, String phone, String sss, String philhealth, String tin, 
-                   String pagibig, String status, String position, String supervisor, 
-                   double basicSalary, double riceSubsidy, double phoneAllowance, 
-                   double clothingAllowance, double grossRate, double hourlyRate, Role role) {
-        super(empNo, lastName, firstName, birthday, address, phone, sss, philhealth, 
-              tin, pagibig, status, position, supervisor, basicSalary, riceSubsidy, 
-              phoneAllowance, clothingAllowance, grossRate, hourlyRate, role);
-    }
-
+    // Constructor for full CSV data
+public HRStaff(int empNo, String lastName, String firstName, LocalDate birthday, 
+             String address, String phone, String sss, String philhealth, 
+             String tin, String pagibig, String status, String position, 
+             String supervisor, double basicSalary, double riceSubsidy, 
+             double phoneAllowance, double clothingAllowance, double grossRate, 
+             double hourlyRate, Role role, String gender) { // <--- ADD String gender HERE
+    
+    // Pass gender to the super constructor
+    super(empNo, lastName, firstName, birthday, address, phone, sss, 
+          philhealth, tin, pagibig, status, position, supervisor, 
+          basicSalary, riceSubsidy, phoneAllowance, clothingAllowance, 
+          grossRate, hourlyRate, role, gender); 
+}
     /**
      * ADDED: Small constructor for Role Upgrading in CSVHandler.
      * This fixes the "no suitable constructor found" error.
      */
-    public HRStaff(int id, String last, String first, LocalDate bday, double basic) {
-        super(id, last, first, bday);
-        this.basicSalary = basic;
-        this.setRole(Role.HR_STAFF);
-    }
+    // Add this 6-parameter constructor to HRStaff.java
+public HRStaff(int id, String last, String first, LocalDate bday, double basic, String gender) {
+    // 1. Call the basic super constructor
+    super(id, last, first, bday); 
+    
+    // 2. Set the specific fields
+    this.setBasicSalary(basic); 
+    this.setGender(gender);
+    this.setRole(Role.HR_STAFF); 
+}
 
     // --- METHOD DICTIONARY LOGIC ---
 

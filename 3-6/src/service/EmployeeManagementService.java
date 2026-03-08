@@ -1,5 +1,6 @@
 package service;
 
+import dao.AttendanceDAO;
 import dao.EmployeeDAO;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -12,11 +13,12 @@ import model.RegularStaff;
 
 public class EmployeeManagementService {
     private final EmployeeDAO employeeDao;
+    private AttendanceDAO attendanceDao; // Add this
 
-    public EmployeeManagementService(EmployeeDAO employeeDao) {
-        this.employeeDao = employeeDao; 
+  public EmployeeManagementService(EmployeeDAO employeeDao, AttendanceDAO attendanceDao) {
+        this.employeeDao = employeeDao;
+        this.attendanceDao = attendanceDao;
     }
-
     /**
      * N-TIER RULE: The UI calls this with raw data. 
      * The Service creates the Model and performs calculations.
@@ -99,6 +101,11 @@ public boolean updateEmployeeDetails(Employee actor, Employee updatedData) {
     // 1. Validation/Permission check
     if (!(actor instanceof IAdminOperations)) return false;
 
+    // --- ADDED GENDER BUSINESS RULE ---
+    if (updatedData.getGender() == null || updatedData.getGender().trim().isEmpty()) {
+        updatedData.setGender("Not");
+    }
+
     // 2. Business Logic: Recalculate Rates
     double hourly = updatedData.getBasicSalary() / 21 / 8;
     updatedData.setHourlyRate(hourly);
@@ -108,6 +115,7 @@ public boolean updateEmployeeDetails(Employee actor, Employee updatedData) {
     updatedData.setGrossRate(totalGross);
 
     // 3. Call DAO to update cache and save to CSV
+    // Note: ensure your DAO method name is correct (either .update or .updateEmployee)
     return employeeDao.update(updatedData);
 }
 
@@ -128,7 +136,7 @@ public boolean removeEmployee(IAdminOperations actor, int id) {
 public boolean updateEmployeeFromForm(Employee actor, JTextField[] fields) {
     try {
         // 1. Permission & Name Validation
-        if (!(actor instanceof IAdminOperations)) {
+        if (!(actor instanceof model.IAdminOperations)) {
             JOptionPane.showMessageDialog(null, "Access Denied.");
             return false;
         }
@@ -137,8 +145,8 @@ public boolean updateEmployeeFromForm(Employee actor, JTextField[] fields) {
             return false;
         }
 
-        // 2. Date Validation (The fix for PickDate/Manual Input)
-        String bdayText = fields[3].getText().trim();
+        // 2. Date Validation (SHIFTED TO INDEX 4 because Index 3 is now Gender)
+        String bdayText = fields[4].getText().trim();
         if (bdayText.isEmpty() || bdayText.equals("MM/dd/yyyy")) {
             JOptionPane.showMessageDialog(null, "Please select or enter a valid Birthday (MM/dd/yyyy).");
             return false;
@@ -157,14 +165,13 @@ public boolean updateEmployeeFromForm(Employee actor, JTextField[] fields) {
             return false;
         }
 
-        // 3. Financial Validation (Stripping Decimals & Enforcing 4-digit Rules)
-        long basic = (long) parseDouble(fields[13].getText());
-        long rice = (long) parseDouble(fields[14].getText());
-        long phone = (long) parseDouble(fields[15].getText());
-        long cloth = (long) parseDouble(fields[16].getText());
+        // 3. Financial Validation (SHIFTED INDICES 14-17)
+        long basic = (long) parseDouble(fields[14].getText());
+        long rice = (long) parseDouble(fields[15].getText());
+        long phone = (long) parseDouble(fields[16].getText());
+        long cloth = (long) parseDouble(fields[17].getText());
 
-        // Business Rule: Rice and Phone must be 4 digits (e.g., 1000-9999) 
-        // OR as you requested: Phone between 500 and 5000
+        // Business Rule: Rice and Phone validation
         if (rice < 1000 || rice > 9999) {
             JOptionPane.showMessageDialog(null, "Rice Subsidy must be a 4-digit amount.");
             return false;
@@ -174,34 +181,38 @@ public boolean updateEmployeeFromForm(Employee actor, JTextField[] fields) {
             return false;
         }
 
-        // 4. Pag-ibig Validation (12 Digits)
-        String pagibigText = fields[9].getText().trim();
+        // 4. Pag-ibig Validation (SHIFTED TO INDEX 10)
+        String pagibigText = fields[10].getText().trim();
         if (pagibigText.length() != 12 || !pagibigText.matches("\\d+")) {
             JOptionPane.showMessageDialog(null, "Pag-ibig number must be exactly 12 digits.");
             return false;
         }
 
-        // 5. Map validated data to the Model
-        Employee emp = new RegularStaff();
+        // 5. Map validated data to the Model (ALL INDICES SHIFTED BY +1 AFTER FIRST NAME)
+        Employee emp = new model.RegularStaff();
         emp.setEmpNo(Integer.parseInt(fields[0].getText().trim()));
         emp.setLastName(fields[1].getText().trim());
         emp.setFirstName(fields[2].getText().trim());
-        emp.setBirthday(birthday);
-        emp.setAddress(fields[4].getText().trim());
-        emp.setPhone(fields[5].getText().trim());
-        emp.setSss(fields[6].getText().trim());
-        emp.setPhilhealth(fields[7].getText().trim());
-        emp.setTin(fields[8].getText().trim());
-        emp.setPagibig(pagibigText);
-        emp.setStatus(fields[10].getText().trim());
-        emp.setPosition(fields[11].getText().trim());
-        emp.setSupervisor(fields[12].getText().trim());
+        
+        // --- NEW: Capture Gender from Index 3 ---
+        emp.setGender(fields[3].getText().trim()); 
+        
+        emp.setBirthday(birthday);                         // Index 4
+        emp.setAddress(fields[5].getText().trim());        // Index 5
+        emp.setPhone(fields[6].getText().trim());          // Index 6
+        emp.setSss(fields[7].getText().trim());            // Index 7
+        emp.setPhilhealth(fields[8].getText().trim());     // Index 8
+        emp.setTin(fields[9].getText().trim());            // Index 9
+        emp.setPagibig(pagibigText);                       // Index 10
+        emp.setStatus(fields[11].getText().trim());        // Index 11
+        emp.setPosition(fields[12].getText().trim());      // Index 12
+        emp.setSupervisor(fields[13].getText().trim());    // Index 13
 
-        // 6. Final Calculations (Round to whole numbers for 'ichura')
-        emp.setBasicSalary((double) basic);
-        emp.setRiceSubsidy((double) rice);
-        emp.setPhoneAllowance((double) phone);
-        emp.setClothingAllowance((double) cloth);
+        // 6. Final Calculations
+        emp.setBasicSalary((double) basic);                // Index 14
+        emp.setRiceSubsidy((double) rice);                 // Index 15
+        emp.setPhoneAllowance((double) phone);             // Index 16
+        emp.setClothingAllowance((double) cloth);          // Index 17
         
         emp.setGrossRate((double) (basic + rice + phone + cloth));
         emp.setHourlyRate((double) Math.round((double) basic / 21 / 8));
@@ -316,6 +327,14 @@ private double validateDouble(String input, String fieldName) throws Exception {
     }
 }
 
+
+
+
+
+
+
+
+
 private String cleanNull(String input) {
     return (input == null || input.trim().equalsIgnoreCase("null")) ? "" : input.trim(); //
 }
@@ -333,32 +352,77 @@ private String parseDate(String input) {
 }
 
 
+
+
+
+public boolean[] getTodaysStatus(int empNo) {
+    // Business Logic: Determine if user can Check-in or Check-out
+    Object[][] todayData = attendanceDao.getAttendanceByMonth(empNo, 
+                            LocalDate.now().getMonth().name(), 
+                            String.valueOf(LocalDate.now().getYear()));
+    
+    boolean checkedIn = false;
+    boolean checkedOut = false;
+    String todayStr = LocalDate.now().format(DateTimeFormatter.ofPattern("M/d/yyyy"));
+
+    for (Object[] row : todayData) {
+        if (row[0].equals(todayStr)) {
+            if (!row[1].equals("N/A")) checkedIn = true;
+            if (!row[2].equals("N/A")) checkedOut = true;
+        }
+    }
+    // Returns [CanCheckIn, CanCheckOut]
+    return new boolean[]{!checkedIn, (checkedIn && !checkedOut)};
+}
+
+
+
+
+// Keep ONLY this version in EmployeeManagementService.java
+public void recordTimeLog(int empNo, String type) {
+    // 1. Fetch names so the DAO doesn't have to guess
+    Employee emp = employeeDao.findById(empNo);
+    String lName = (emp != null) ? emp.getLastName() : "Unknown";
+    String fName = (emp != null) ? emp.getFirstName() : "Unknown";
+
+    // 2. Standardize: convert "Check In" or "In" to "Check-in"
+    String action = type.toLowerCase().contains("in") ? "Check-in" : "Check-out";
+
+    // 3. Call the DAO that actually handles the File I/O
+    attendanceDao.recordAttendance(empNo, lName, fName, action);
+}
+
+
+
+
+
 public Object[] getEmployeeDetailsForForm(int empId) {
     Employee emp = employeeDao.findById(empId);
     if (emp == null) return null;
 
-    // Business Rule: Format financial data as whole numbers (no decimals) for the UI
+    // Business Rule: Format financial data as whole numbers and include Gender
     return new Object[] {
-        emp.getEmpNo(), 
-        emp.getLastName(), 
-        emp.getFirstName(), 
-        emp.getBirthday(), 
-        emp.getAddress(), 
-        emp.getPhone(),
-        emp.getSss(), 
-        emp.getPhilhealth(), 
-        emp.getTin(), 
-        emp.getPagibig(),
-        emp.getStatus(), 
-        emp.getPosition(), 
-        emp.getSupervisor(),
-        formatWholeNumber(emp.getBasicSalary()),      // Index 13
-        formatWholeNumber(emp.getRiceSubsidy()),      // Index 14
-        formatWholeNumber(emp.getPhoneAllowance()),   // Index 15
-        formatWholeNumber(emp.getClothingAllowance()),// Index 16
-        formatWholeNumber(emp.getGrossRate()),        // Index 17
-        formatWholeNumber(emp.getHourlyRate()),       // Index 18
-        emp.getRole()
+        emp.getEmpNo(),               // 0
+        emp.getLastName(),            // 1
+        emp.getFirstName(),           // 2
+        emp.getBirthday(),            // 3
+        emp.getAddress(),             // 4
+        emp.getPhone(),               // 5
+        emp.getSss(),                 // 6
+        emp.getPhilhealth(),          // 7
+        emp.getTin(),                 // 8
+        emp.getPagibig(),             // 9
+        emp.getStatus(),              // 10
+        emp.getPosition(),            // 11
+        emp.getSupervisor(),          // 12
+        formatWholeNumber(emp.getBasicSalary()),      // 13
+        formatWholeNumber(emp.getRiceSubsidy()),      // 14
+        formatWholeNumber(emp.getPhoneAllowance()),   // 15
+        formatWholeNumber(emp.getClothingAllowance()),// 16
+        formatWholeNumber(emp.getGrossRate()),        // 17
+        formatWholeNumber(emp.getHourlyRate()),       // 18
+        emp.getRole(),                                // 19
+        emp.getGender()                               // 20 - THE FIX IS HERE
     };
 }
 
@@ -423,4 +487,92 @@ public String[] getSupervisorsForPosition(String position) {
             return new String[]{"N/A"};
     }
 }
+
+
+// Inside EmployeeManagementService.java
+
+
+
+
+// Inside EmployeeManagementService.java
+
+// Inside EmployeeManagementService.java
+
+public Object[][] getAttendanceLogs(int empNo, String month, String year) {
+    // Pass all three arguments to the DAO as required by your CSVHandler
+    return attendanceDao.getAttendanceByMonth(empNo, month, year);
+}
+
+// Inside EmployeeManagementService.java
+
+/**
+ * FIX 3: Improved Button State Logic
+ * This determines if the Check-In or Check-Out buttons should be greyed out.
+ */
+
+public boolean[] getButtonStates(int empNo) {
+    String todayStr = LocalDate.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+    // Get ALL logs to avoid filter issues
+    Object[][] data = attendanceDao.getAttendanceByMonth(empNo, "All", "All");
+
+    boolean hasIn = false;
+    boolean hasOut = false;
+
+    if (data != null) {
+        for (Object[] row : data) {
+            String csvDate = row[0].toString().trim();
+            if (csvDate.equals(todayStr)) {
+                // If it's today, check the In/Out columns
+                String timeIn = row[1].toString();
+                String timeOut = row[2].toString();
+
+                if (!timeIn.equalsIgnoreCase("N/A") && !timeIn.isEmpty()) {
+                    hasIn = true; 
+                }
+                if (!timeOut.equalsIgnoreCase("N/A") && !timeOut.isEmpty() && !timeOut.equals("00:00")) {
+                    hasOut = true;
+                }
+            }
+        }
+    }
+    // Debug result
+    System.out.println("Logic Check -> HasIn: " + hasIn + " | HasOut: " + hasOut);
+    
+    // Return: [Enable In?, Enable Out?]
+    return new boolean[]{!hasIn, (hasIn && !hasOut)};
+}
+
+
+// Add this inside EmployeeManagementService.java
+public EmployeeDAO getEmployeeDao() {
+    return this.employeeDao;
+}
+
+public String[] getFormattedDataForForm(Object[] rawData) {
+    String[] formatted = new String[21]; // Matches your 21 labels
+    if (rawData == null) return formatted;
+
+    // 1. Map ID, Last Name, First Name (0, 1, 2)
+    formatted[0] = String.valueOf(rawData[0]);
+    formatted[1] = String.valueOf(rawData[1]);
+    formatted[2] = String.valueOf(rawData[2]);
+
+    // 2. THE FIX: Pull Gender from CSV Index 20 -> UI Index 3
+    if (rawData.length > 20) {
+        formatted[3] = String.valueOf(rawData[20]); 
+    } else {
+        formatted[3] = "Not Set";
+    }
+
+    // 3. Map Birthday (CSV Index 3 -> UI Index 4)
+    formatted[4] = String.valueOf(rawData[3]);
+
+    // 4. Map the rest (CSV Indices 4-19 -> UI Indices 5-20)
+    for (int i = 5; i < 21; i++) {
+        formatted[i] = String.valueOf(rawData[i - 1]);
+    }
+
+    return formatted;
+}
+
 }

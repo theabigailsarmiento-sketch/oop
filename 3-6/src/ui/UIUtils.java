@@ -2,6 +2,7 @@ package ui;
 
 import java.awt.Color;
 import java.awt.Component;
+import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.GridLayout;
@@ -10,8 +11,7 @@ import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
-import javax.swing.JTextField;   
-
+import javax.swing.JTextField; // This was likely missing
 public class UIUtils {
     
     public static JPanel createTitledPanel(String title, LayoutManager layout) {
@@ -34,15 +34,7 @@ public class UIUtils {
         return button;
     }
     
-    public static JButton createNavButton(String text, Color bgColor, Color fgColor) {
-        JButton button = new JButton(text);
-        button.setBackground(bgColor);
-        button.setForeground(fgColor);
-        button.setAlignmentX(Component.CENTER_ALIGNMENT);
-        button.setBorder(BorderFactory.createEmptyBorder(0, 20, 0, 20)); 
-        button.setMaximumSize(new Dimension(180, 30));
-        return button;
-    }
+  
 
     public static JLabel createHeaderLabel(String text) {
         JLabel label = new JLabel(text);
@@ -109,4 +101,22 @@ public class UIUtils {
         financialInfo.add(hourlyRate);
         return financialInfo;
     }
+
+
+
+public static JButton createNavButton(String text, Color foreground, Color background) {
+        JButton button = new JButton(text);
+        button.setForeground(foreground);
+        button.setBackground(new Color(128, 0, 0)); // MotorPH Red
+        button.setFocusPainted(false);
+        button.setBorderPainted(false);
+        button.setFont(new Font("SansSerif", Font.BOLD, 13));
+        
+        // Use the static constant from the Cursor class
+        button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        
+        return button;
+    }
+
+
 }

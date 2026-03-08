@@ -10,21 +10,20 @@ import ui.LoginPanel;
 
 public class Main {
     public static void main(String[] args) {
-        // 1. DAOs
+        // 1. Initialize DAOs
         EmployeeDAO employeeDao = new CSVHandler();
         AttendanceDAO attendanceDao = new AttendanceCSVHandler(); 
         
-        // 2. Service
-        EmployeeManagementService employeeService = new EmployeeManagementService(employeeDao);
+        // 2. Initialize Service (FIXED: Added variable declaration 'service')
+        EmployeeManagementService service = new EmployeeManagementService(employeeDao, attendanceDao);
         
-        // 3. Auth
-        // Note: Even though we create an instance to pass the DAO, 
-        // inside the UI we should use UserLibrary.getLoggedInEmployee()
+        // 3. Initialize Auth
         UserLibrary auth = new UserLibrary(employeeDao);
 
         java.awt.EventQueue.invokeLater(() -> {
-            // This call is fine because it passes the instance to the constructor
-            new LoginPanel(employeeService, attendanceDao, auth).setVisible(true);
+            // FIXED: Passed 'service' instead of 'employeeService'
+            // Ensure LoginPanel constructor accepts (EmployeeManagementService, AttendanceDAO, UserLibrary)
+            new LoginPanel(service, attendanceDao, auth).setVisible(true);
         });
     }
 }
