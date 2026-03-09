@@ -169,6 +169,9 @@ btnView.addActionListener(e -> {
     JTextField address = new JTextField();
     setupPlaceholder(address, "e.g. 123 Street, City, Province");
 
+    // NEW GENDER FIELD
+    JComboBox<String> genderCombo = new JComboBox<>(new String[]{"Male", "Female"});
+
     JTextField phone = new JTextField();
     applyFilters(5, phone); 
     setupPlaceholder(phone, "000-000-000");
@@ -179,6 +182,10 @@ btnView.addActionListener(e -> {
     JPanel bw = new JPanel(new BorderLayout()); bw.add(bday); bw.add(btnPickBday, BorderLayout.EAST);
     personalPanel.add(bw);
     addFormField(personalPanel, "Address:", address);
+    
+    // Adding Gender after Address
+    addFormField(personalPanel, "Gender:", genderCombo); 
+    
     addFormField(personalPanel, "Phone Number:", phone);
 
     // --- SECTION 2: Identification & Status ---
@@ -228,7 +235,6 @@ btnView.addActionListener(e -> {
             supervCombo.addItem(s);
         }
     });
-
     addFormField(jobPanel, "Position:", posCombo);
     addFormField(jobPanel, "Supervisor:", supervCombo);
 
